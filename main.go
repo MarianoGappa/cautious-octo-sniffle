@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 )
 
@@ -64,7 +65,12 @@ func ServeWithChannel(c chan *sarama.ConsumerMessage) func(w http.ResponseWriter
 			select {
 			case consumerMessage := <-c:
 				// fmt.Printf("Received message with value: [%v]\n", string(consumerMessage.Value))
-				messages += string(consumerMessage.Value) + "\n"
+				messages +=
+					"{\"topic\": \"" + consumerMessage.Topic +
+						"\", \"partition\": \"" + strconv.FormatInt(int64(consumerMessage.Partition), 10) +
+						"\", \"offset\": \"" + strconv.FormatInt(consumerMessage.Offset, 10) +
+						"\", \"key\": \"" + string(consumerMessage.Key) +
+						"\", \"value\": \"" + string(consumerMessage.Value) + "\"}\n"
 			case <-timer.C:
 				io.WriteString(w, messages)
 				return
