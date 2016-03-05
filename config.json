@@ -1,0 +1,10 @@
+{
+    "consumers" : [
+        {
+            "broker" : "localhost:9092",
+            "partition" : 0,
+            "topic": "new_topic",
+            "offset": "oldest"
+        }
+    ]
+}
