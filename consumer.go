@@ -1,17 +1,10 @@
 package main
 
 import (
-	// "flag"
-	// "fmt"
+	"github.com/Shopify/sarama"
 	"log"
 	"os"
 	"os/signal"
-	// "strconv"
-	// "strings"
-	// "sync"
-	// "time"
-
-	"github.com/Shopify/sarama"
 )
 
 func consume(c chan *sarama.ConsumerMessage, topic string, broker string, partition int, offset int64) {

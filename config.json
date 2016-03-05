@@ -5,6 +5,18 @@
             "partition" : 0,
             "topic": "new_topic",
             "offset": "oldest"
+        },
+        {
+            "broker" : "localhost:9092",
+            "partition" : 0,
+            "topic": "test",
+            "offset": "oldest"
+        },
+        {
+            "broker" : "localhost:9092",
+            "partition" : 0,
+            "topic": "my_topic",
+            "offset": "oldest"
         }
     ]
 }
