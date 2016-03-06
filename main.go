@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -69,9 +70,10 @@ func ServeWithChannel(c chan *sarama.ConsumerMessage) func(w http.ResponseWriter
 					"{\"topic\": \"" + consumerMessage.Topic +
 						"\", \"partition\": \"" + strconv.FormatInt(int64(consumerMessage.Partition), 10) +
 						"\", \"offset\": \"" + strconv.FormatInt(consumerMessage.Offset, 10) +
-						"\", \"key\": \"" + string(consumerMessage.Key) +
-						"\", \"value\": \"" + string(consumerMessage.Value) + "\"}\n"
+						"\", \"key\": \"" + strings.Replace(string(consumerMessage.Key), `"`, `\"`, -1) +
+						"\", \"value\": \"" + strings.Replace(string(consumerMessage.Value), `"`, `\"`, -1) + "\"}\n"
 			case <-timer.C:
+				w.Header().Set("Access-Control-Allow-Origin", "*")
 				io.WriteString(w, messages)
 				return
 			}
