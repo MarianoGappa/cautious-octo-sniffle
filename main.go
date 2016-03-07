@@ -72,6 +72,12 @@ func ServeWithChannel(c chan *sarama.ConsumerMessage) func(w http.ResponseWriter
 						"\", \"offset\": \"" + strconv.FormatInt(consumerMessage.Offset, 10) +
 						"\", \"key\": \"" + strings.Replace(string(consumerMessage.Key), `"`, `\"`, -1) +
 						"\", \"value\": \"" + strings.Replace(string(consumerMessage.Value), `"`, `\"`, -1) + "\"}\n"
+
+				if len(messages) >= 10 {
+					w.Header().Set("Access-Control-Allow-Origin", "*")
+					io.WriteString(w, messages)
+					return
+				}
 			case <-timer.C:
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 				io.WriteString(w, messages)
