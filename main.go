@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -87,8 +88,14 @@ func ServeWithChannel(c chan *sarama.ConsumerMessage) func(w http.ResponseWriter
 	}
 }
 
-func Die(w http.ResponseWriter, req *http.Request) {
-	os.Exit(1)
+func listenToSignals() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-signals
+		os.Exit(1)
+	}()
 }
 
 func main() {
@@ -96,15 +103,12 @@ func main() {
 	c := make(chan *sarama.ConsumerMessage)
 
 	startConsumers(config, c)
+	listenToSignals()
 
 	var addr = flag.String("addr", ":41234", "host:port I'm serving on (default :41234)")
-
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt)
-
 	flag.Parse()
+
 	http.Handle("/", http.HandlerFunc(ServeWithChannel(c)))
-	http.Handle("/die", http.HandlerFunc(Die))
 	err := http.ListenAndServe(*addr, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)

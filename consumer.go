@@ -3,8 +3,6 @@ package main
 import (
 	"github.com/Shopify/sarama"
 	"log"
-	"os"
-	"os/signal"
 )
 
 func consume(c chan *sarama.ConsumerMessage, topic string, broker string, partition int, offset int64) {
@@ -46,18 +44,8 @@ func consume(c chan *sarama.ConsumerMessage, topic string, broker string, partit
 		}
 	}()
 
-	// Trap SIGINT to trigger a shutdown.
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt)
-
-ConsumerLoop:
 	for {
-		select {
-		case msg := <-partitionConsumer.Messages():
-			c <- msg
-		case <-signals:
-			break ConsumerLoop
-		}
+		msg := <-partitionConsumer.Messages()
+		c <- msg
 	}
-
 }
