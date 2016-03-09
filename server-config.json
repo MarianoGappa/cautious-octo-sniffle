@@ -1,4 +1,4 @@
-{
+ {
     "serveOnPort": 41234,
     "consumers" : [
         {
@@ -19,5 +19,5 @@
             "topic": "test_topic_3",
             "offset": "newest"
         }
-    ]
-}
+     ]
+ }

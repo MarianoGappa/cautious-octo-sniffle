@@ -29,7 +29,7 @@ type Config struct {
 }
 
 func readConfig() *Config {
-	file, err := ioutil.ReadFile("./config.json")
+	file, err := ioutil.ReadFile("./server-config.json")
 	if err != nil {
 		panic("Cannot open config.json")
 	}
