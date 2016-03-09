@@ -1,22 +1,23 @@
 {
+    "serveOnPort": 41234,
     "consumers" : [
         {
             "broker" : "localhost:9092",
             "partition" : 0,
-            "topic": "new_topic",
-            "offset": "oldest"
+            "topic": "test_topic_1",
+            "offset": "newest"
         },
         {
             "broker" : "localhost:9092",
             "partition" : 0,
-            "topic": "test",
-            "offset": "oldest"
+            "topic": "test_topic_2",
+            "offset": "newest"
         },
         {
             "broker" : "localhost:9092",
             "partition" : 0,
-            "topic": "my_topic",
-            "offset": "oldest"
+            "topic": "test_topic_3",
+            "offset": "newest"
         }
     ]
 }

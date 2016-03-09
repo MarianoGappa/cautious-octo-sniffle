@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/Shopify/sarama"
 	"io"
@@ -25,7 +24,8 @@ type ConsumerConfig struct {
 }
 
 type Config struct {
-	Consumers []ConsumerConfig `json:"consumers"`
+	Consumers   []ConsumerConfig `json:"consumers"`
+	ServeOnPort int              `json:"serveOnPort"`
 }
 
 func readConfig() *Config {
@@ -105,11 +105,8 @@ func main() {
 	startConsumers(config, c)
 	listenToSignals()
 
-	var addr = flag.String("addr", ":41234", "host:port I'm serving on (default :41234)")
-	flag.Parse()
-
 	http.Handle("/", http.HandlerFunc(ServeWithChannel(c)))
-	err := http.ListenAndServe(*addr, nil)
+	err := http.ListenAndServe(":"+strconv.Itoa(config.ServeOnPort), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
