@@ -1,0 +1,2 @@
+*.js
+!webroot/config-example.js
