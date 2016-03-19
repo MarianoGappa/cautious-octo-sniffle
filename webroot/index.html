@@ -255,8 +255,8 @@
             style = document.createElement('style')
             style.type = 'text/css'
             var styleId = "style_" + guid()
-            var length = config.animationLength
-            style.appendChild(document.createTextNode("." + styleId + " { top: " + newTop + "px !important; left: " + newLeft + "px !important; -webkit-transition: top " + length + ", left " + length + "; /* Safari */ transition: top " + length + ", left " + length + ";}"))
+            var length = config.animationLengthMilliseconds
+            style.appendChild(document.createTextNode("." + styleId + " { top: " + newTop + "px !important; left: " + newLeft + "px !important; -webkit-transition: top " + length + "ms, left " + length + "ms; /* Safari */ transition: top " + length + "ms, left " + length + "ms;}"))
             document.body.appendChild(style)
 
             element.className = styleId + ' detached message'
@@ -268,7 +268,7 @@
                 }
             }
 
-            window.setTimeout(removeNodes(element, style), 2000)
+            window.setTimeout(removeNodes(element, style), length)
         }
 
         function guid() {

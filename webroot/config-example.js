@@ -145,7 +145,7 @@ var config = {
         How long does it take for one message to go from component A to
         component b. CSS transition property value.
     */
-    "animationLength": "1s",
+    "animationLengthMilliseconds": 1000,
 
     /*
         If documentationMode is set to true, no WebSocket connection is
