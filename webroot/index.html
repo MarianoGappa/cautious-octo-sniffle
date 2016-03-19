@@ -79,14 +79,14 @@
             document.getElementById("title").innerHTML = config.title
             loadComponents()
 
+            window.setInterval(function(){
+                if (uiActionQueue.length > 0) {
+                    (uiActionQueue.shift())()
+                }
+            }, config.eventSeparationIntervalMilliseconds)
+
             if (!config.documentationMode) {
                 openWebSocket()
-
-                window.setInterval(function(){
-                    if (uiActionQueue.length > 0) {
-                        (uiActionQueue.shift())()
-                    }
-                }, config.eventSeparationIntervalMilliseconds)
             } else {
                 document.getElementById('rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">Reset</button><button onclick="javascript:mockPoll()">Next</button>'
             }
@@ -138,12 +138,12 @@
 
                 if (event.eventType == 'streamMessage') {
                     uiActionQueue.push(
-                        function() {
+                        function(event) {
                             return function() {
                                 animateFromTo(document.getElementById('component_' + event.sourceId), document.getElementById('component_' + event.targetId))
                                 log(event.caption)
                             }
-                        }()
+                        }(event)
                     )
                 }
             }
@@ -151,7 +151,7 @@
 
         var resetDocumentationMode = function() {
             documentationModeIterator = 0
-            document.getElementById('log').innerHTML = '<span class="logLine"><b>Log</b></span>'
+            document.getElementById('log').innerHTML = '';
         }
 
         var mockPoll = function() {
