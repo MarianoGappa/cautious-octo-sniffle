@@ -1,11 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/Shopify/sarama"
-	"io"
-	"io/ioutil"
+	"golang.org/x/net/websocket"
 	"log"
 	"net/http"
 	"os"
@@ -13,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 )
 
 type ConsumerConfig struct {
@@ -24,25 +21,10 @@ type ConsumerConfig struct {
 }
 
 type Config struct {
-	Consumers   []ConsumerConfig `json:"consumers"`
-	ServeOnPort int              `json:"serveOnPort"`
+	Consumers []ConsumerConfig `json:"consumers"`
 }
 
-func readConfig() *Config {
-	file, err := ioutil.ReadFile("./server-config.json")
-	if err != nil {
-		panic("Cannot open config.json")
-	}
-	config := new(Config)
-	err = json.Unmarshal(file, &config)
-	if err != nil {
-		fmt.Println("error:", err)
-	}
-
-	return config
-}
-
-func startConsumers(config *Config, c chan *sarama.ConsumerMessage) {
+func startConsumers(config *Config, c chan *sarama.ConsumerMessage, quit chan bool) {
 	for _, consumerConfig := range config.Consumers {
 		topic, broker, partition := consumerConfig.Topic, consumerConfig.Broker, consumerConfig.Partition
 		var offset int64 = -1
@@ -55,35 +37,49 @@ func startConsumers(config *Config, c chan *sarama.ConsumerMessage) {
 			panic("Invalid value for consumer offset")
 		}
 
-		go consume(c, topic, broker, partition, offset)
+		go consume(c, quit, topic, broker, partition, offset)
 	}
 }
 
-func ServeWithChannel(c chan *sarama.ConsumerMessage) func(w http.ResponseWriter, req *http.Request) {
-	return func(w http.ResponseWriter, req *http.Request) {
-		messages := ""
-		timer := time.NewTimer(time.Millisecond * 10)
-		for {
-			select {
-			case consumerMessage := <-c:
-				// fmt.Printf("Received message with value: [%v]\n", string(consumerMessage.Value))
-				messages +=
-					"{\"topic\": \"" + consumerMessage.Topic +
-						"\", \"partition\": \"" + strconv.FormatInt(int64(consumerMessage.Partition), 10) +
-						"\", \"offset\": \"" + strconv.FormatInt(consumerMessage.Offset, 10) +
-						"\", \"key\": \"" + strings.Replace(string(consumerMessage.Key), `"`, `\"`, -1) +
-						"\", \"value\": \"" + strings.Replace(string(consumerMessage.Value), `"`, `\"`, -1) + "\"}\n"
+func onConnected(ws *websocket.Conn) {
+	log.Println("Opened WebSocket connection!")
 
-				if len(messages) >= 10 {
-					w.Header().Set("Access-Control-Allow-Origin", "*")
-					io.WriteString(w, messages)
-					return
-				}
-			case <-timer.C:
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				io.WriteString(w, messages)
-				return
+	var config Config
+	err := websocket.JSON.Receive(ws, &config)
+	if err != nil {
+		ws.Close()
+		log.Println("Didn't receive config from WebSocket!", err)
+		return
+	}
+
+	quit := make(chan bool)
+	c := make(chan *sarama.ConsumerMessage)
+
+	startConsumers(&config, c, quit)
+
+	for {
+		select {
+		case consumerMessage := <-c:
+			msg :=
+				"{\"topic\": \"" + consumerMessage.Topic +
+					"\", \"partition\": \"" + strconv.FormatInt(int64(consumerMessage.Partition), 10) +
+					"\", \"offset\": \"" + strconv.FormatInt(consumerMessage.Offset, 10) +
+					"\", \"key\": \"" + strings.Replace(string(consumerMessage.Key), `"`, `\"`, -1) +
+					"\", \"value\": \"" + strings.Replace(string(consumerMessage.Value), `"`, `\"`, -1) + "\"}\n"
+
+			log.Println("Sending message to WebSocket: " + msg)
+			err := websocket.Message.Send(ws, msg)
+			if err != nil {
+				log.Println("Error while trying to send to WebSocket: ", err)
+				quit <- true
 			}
+		case <-quit:
+			err := ws.Close()
+			log.Println("Closed WebSocket connection given quit signal.")
+			if err != nil {
+				log.Println("Error while closing WebSocket!: ", err)
+			}
+			return
 		}
 	}
 }
@@ -99,14 +95,18 @@ func listenToSignals() {
 }
 
 func main() {
-	config := readConfig()
-	c := make(chan *sarama.ConsumerMessage)
-
-	startConsumers(config, c)
 	listenToSignals()
 
-	http.Handle("/", http.HandlerFunc(ServeWithChannel(c)))
-	err := http.ListenAndServe(":"+strconv.Itoa(config.ServeOnPort), nil)
+	http.Handle("/ws", websocket.Handler(onConnected))
+	http.Handle("/", http.FileServer(http.Dir("webroot")))
+
+	if len(os.Args) == 1 {
+		fmt.Println("usage: flowbro {portToServeOn}\n")
+		os.Exit(2)
+	}
+
+	port := os.Args[1]
+	err := http.ListenAndServe(":"+string(port), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}

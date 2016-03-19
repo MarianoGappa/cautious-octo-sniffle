@@ -1,0 +1,378 @@
+<html><head>
+<link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+</head>
+<body onload="run()">
+    <script type="text/javascript" src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+    <div id="titleContainer">
+        <div id="title"></div>
+        <nav id="rest">
+        </nav>
+    </div>
+    <div id="mainContainer">
+        <section id="container"></section>
+        <section id="log"></section>
+    </div>
+    <script type="text/javascript">
+        // http://stackoverflow.com/questions/901115/how-can-i-get-query-string-values-in-javascript
+        var getParameterByName = function(name, url) {
+            if (!url) url = window.location.href;
+            url = url.toLowerCase(); // This is just to avoid case sensitiveness
+            name = name.replace(/[\[\]]/g, "\\$&").toLowerCase();// This is just to avoid case sensitiveness for query parameter name
+            var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+                results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, " "));
+        }
+
+        var configFileFromQueryString = getParameterByName('config')
+
+        var configFile = configFileFromQueryString || 'config-example'
+
+        var element = document.createElement('script')
+        element.setAttribute('src', configFile + '.js')
+        document.head.appendChild(element)
+
+
+        var documentationModeIterator = 0
+        var uiActionQueue = [];
+
+        var log = function(message, color) {
+            switch (color) {
+                case 'severe':
+                case 'error':
+                    color = '#E53A40'
+                    break
+                case 'warning':
+                    color = '#FFBC42'
+                    break
+                case 'info':
+                    color = 'inherit'
+                    break
+                case 'trace':
+                case 'debug':
+                    color = '#6E7783'
+                    break
+                case 'happy':
+                    color = '#2f751b'
+                    break
+                case '':
+                case undefined:
+                case false:
+                    color = 'inherit'
+            }
+
+            var element = document.createElement('span')
+            element.className = 'logLine'
+            element.style.color = color
+            element.innerHTML = message
+            document.getElementById('log').insertBefore(element, document.getElementById('log').firstChild)
+
+            if (document.getElementById('log').children.length > 1000) {
+                document.getElementById('log').removeChild(document.getElementById('log').lastElementChild)
+            }
+        }
+
+        var state = {}
+
+        var run = function() {
+            document.getElementById("title").innerHTML = config.title
+            loadComponents()
+
+            if (!config.documentationMode) {
+                openWebSocket()
+
+                window.setInterval(function(){
+                    if (uiActionQueue.length > 0) {
+                        (uiActionQueue.shift())()
+                    }
+                }, config.eventSeparationIntervalMilliseconds)
+            } else {
+                document.getElementById('rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">Reset</button><button onclick="javascript:mockPoll()">Next</button>'
+            }
+        }
+
+        var openWebSocket = function() {
+            var wsUrl = "ws://" + config.webSocketHost + ":" + config.webSocketPort + "/ws"
+            var ws = new WebSocket(wsUrl)
+
+            ws.onopen = function (event) {
+                log("WebSocket open on [" + wsUrl + "]!", 'happy')
+                try {
+                    ws.send(JSON.stringify(config.serverConfig))
+                    log("Sent configurations to server successfully!", 'happy')
+                } catch(e) {
+                    log("Server is drunk :( can't send him configurations!", 'error')
+                    console.log(e)
+                }
+            };
+
+            ws.onmessage = function (event) {
+                resultData = []
+                if (event.data.trim()) {
+                    lines = cleanArray(event.data.trim().split(/\n/))
+                    for (i in lines) {
+                        try {
+                            maybeResult = JSON.parse(lines[i])
+                            resultData.push(maybeResult)
+                        } catch (e) {
+                            console.log("Couldn't parse this as JSON: ", lines[i], "\nError: ", e)
+                        }
+                    }
+                }
+
+                processUiEvents(extractEvents(resultData))
+            }
+
+            ws.onclose = function (event) {
+              log("WebSocket closed!", 'error');
+            }
+            ws.onerror = function (event) {
+              log("WebSocket had error!" + event, 'error');
+            }
+        }
+
+        var processUiEvents = function(events) {
+            for (var i in events) {
+                var event = events[i]
+
+                if (event.eventType == 'streamMessage') {
+                    uiActionQueue.push(
+                        function() {
+                            return function() {
+                                animateFromTo(document.getElementById('component_' + event.sourceId), document.getElementById('component_' + event.targetId))
+                                log(event.caption)
+                            }
+                        }()
+                    )
+                }
+            }
+        }
+
+        var resetDocumentationMode = function() {
+            documentationModeIterator = 0
+            document.getElementById('log').innerHTML = '<span class="logLine"><b>Log</b></span>'
+        }
+
+        var mockPoll = function() {
+            newEvents = []
+            if (config.documentationSteps[documentationModeIterator]) {
+                newEvents = config.documentationSteps[documentationModeIterator++]
+            }
+
+            processUiEvents(extractEvents(newEvents))
+        }
+
+        var extractEvents = function(resultData) {
+            var events = []
+            for (var i in resultData) {
+                if (resultData[i]) {
+                    var newEvents = config.logic(resultData[i], log, state)
+                    if (newEvents.length == 0) {
+                        log('Ignoring event: ' + resultData[i].value, 'debug')
+                    }
+                    for (var j in newEvents)
+                        events.push(newEvents[j])
+                }
+            }
+            return events
+        }
+
+        var loadComponents = function() {
+            for (var i in config.components) {
+                var component = config.components[i]
+
+                var element = document.createElement('div')
+                element.id = 'component_' + component.id
+                element.className = 'detached component'
+                element.style.left = component.left
+                element.style.top = component.top
+
+                if (component.backgroundColor) {
+                    element.style.backgroundColor = component.backgroundColor
+                }
+
+                if (component.width) {
+                    element.style.width = component.width
+                } else {
+                    element.style.width = "100px"
+                }
+
+                if (component.height) {
+                    element.style.height = component.height
+                } else {
+                    element.style.height = "100px"
+                }
+
+                if (component.img) {
+                    var img = document.createElement('img')
+                    img.src = config.images[component.img]
+                    element.appendChild(img)
+                }
+
+                document.getElementById('container').appendChild(element)
+            }
+        }
+
+        var animateFromTo = function(source, target) {
+            var element = document.createElement('div')
+            element.id = guid()
+            element.className = 'detached message'
+
+            if (config.defaultMessage.width) {
+                element.style.width = config.defaultMessage.width
+            } else {
+                element.style.width = "50px"
+            }
+
+            if (config.defaultMessage.height) {
+                element.style.height = config.defaultMessage.height
+            } else {
+                element.style.height = "50px"
+            }
+
+            if (config.defaultMessage.backgroundColor) {
+                element.style.backgroundColor = config.defaultMessage.backgroundColor
+            } else {
+                element.style.backgroundColor = "red"
+            }
+
+            element.style.top = source.offsetHeight / 2 - parseInt(element.style.height) / 2 + parseInt(source.offsetTop)
+            element.style.left = source.offsetWidth / 2 - parseInt(element.style.width) / 2 + parseInt(source.offsetLeft)
+            element.style.zIndex = -1
+            document.getElementById('container').appendChild(element)
+
+            if (config.defaultMessage.img) {
+                var img = document.createElement('img')
+                img.src = config.images[config.defaultMessage.img]
+                img.style.width = config.defaultMessage.width
+                element.appendChild(img)
+            }
+
+            var newTop = target.offsetHeight / 2 - parseInt(element.style.height) / 2 + parseInt(target.offsetTop)
+            var newLeft = target.offsetWidth / 2 - parseInt(element.style.width) / 2 + parseInt(target.offsetLeft)
+
+            style = document.createElement('style')
+            style.type = 'text/css'
+            var styleId = "style_" + guid()
+            var length = config.animationLength
+            style.appendChild(document.createTextNode("." + styleId + " { top: " + newTop + "px !important; left: " + newLeft + "px !important; -webkit-transition: top " + length + ", left " + length + "; /* Safari */ transition: top " + length + ", left " + length + ";}"))
+            document.body.appendChild(style)
+
+            element.className = styleId + ' detached message'
+
+            var removeNodes = function(element, style) {
+                return function() {
+                    element.parentNode.removeChild(element)
+                    style.parentNode.removeChild(style)
+                }
+            }
+
+            window.setTimeout(removeNodes(element, style), 2000)
+        }
+
+        function guid() {
+          function s4() {
+            return Math.floor((1 + Math.random()) * 0x10000)
+              .toString(16)
+              .substring(1)
+          }
+          return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+            s4() + '-' + s4() + s4() + s4();
+        }
+
+        function cleanArray(actual) {
+          var newArray = new Array();
+          for (var i = 0; i < actual.length; i++) {
+            if (actual[i]) {
+              newArray.push(actual[i]);
+            }
+          }
+          return newArray;
+        }
+    </script>
+    <style>
+        body {
+            background-color: #EEE;
+            margin: 0;
+            padding: 0;
+            line-height: 1;
+            font-family: 'Open Sans', 'Verdana', 'sans-serif';
+            color: #282c37;
+        }
+        b {
+            font-weight: bolder;
+            font-size: 18px;
+        }
+        #titleContainer {
+            display: flex;
+            padding: 20px;
+            font-weight: bolder;
+            font-size: 26px;
+            background-color: #998CCC;
+            box-shadow: 0px 2px 2px 0px #282c37;
+        }
+        #title {
+            flex: 1;
+        }
+        #rest {
+            flex: 1;
+            text-align: right;
+        }
+        #mainContainer {
+            display: flex;
+            flex-wrap: wrap;
+            box-shadow: 0px 2px 2px 0px #282c37;
+        }
+        .detached {
+            position: absolute;
+        }
+        .message {
+        }
+
+        .component {
+        }
+        .component img, .message img {
+            max-width:100%;
+            max-height:100%;
+        }
+        #container {
+            background-color: #d9e1e8;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            z-index: -2;
+            box-shadow: 0px 2px 2px 0px #282c37;
+
+            min-width: 700px;
+            min-height: 500px;
+            position: relative;
+            overflow: hidden;
+            flex: 1;
+        }
+        #log {
+            flex: 1;
+            padding: 5px;
+            min-height: 100vh;
+            box-shadow: -2px 0px 2px 0px #282c37;
+
+            background-color: #9baec8;
+        }
+        .logline {
+            padding: 5px;
+            display: block;
+        }
+        button {
+            margin-right: 15px;
+            padding: 3px 15px 3px 15px;
+            font-family: 'Open Sans', 'Verdana', 'sans-serif';
+            box-shadow: 1px 1px 2px 0px #282c37;
+            background-color: #282c37;
+            color: white;
+            font-weight: bolder;
+            font-size: 15px;
+            border: 1px solid black;
+        }
+    </style>
+</body>
+</html>

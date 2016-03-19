@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-func consume(c chan *sarama.ConsumerMessage, topic string, broker string, partition int, offset int64) {
+func consume(c chan *sarama.ConsumerMessage, quit chan bool, topic string, broker string, partition int, offset int64) {
 	if topic == "" {
 		panic("Please define topic name for your consumer")
 	}
@@ -45,7 +45,11 @@ func consume(c chan *sarama.ConsumerMessage, topic string, broker string, partit
 	}()
 
 	for {
-		msg := <-partitionConsumer.Messages()
-		c <- msg
+		select {
+		case msg := <-partitionConsumer.Messages():
+			c <- msg
+		case <-quit:
+			return
+		}
 	}
 }
