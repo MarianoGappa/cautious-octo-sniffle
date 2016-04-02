@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/Shopify/sarama"
 	"log"
+	"sync"
 )
 
 func consume(c chan *sarama.ConsumerMessage, quit chan bool, topic string, broker string, partition int, offset int64) {
@@ -27,29 +28,40 @@ func consume(c chan *sarama.ConsumerMessage, quit chan bool, topic string, broke
 		panic(err)
 	}
 
-	defer func() {
-		if err := consumer.Close(); err != nil {
-			log.Fatalln(err)
+	var partitions []int32
+	if (partition == -1) {
+		partitions, err = consumer.Partitions(topic)
+		if err != nil {
+			panic(err)
 		}
-	}()
-
-	partitionConsumer, err := consumer.ConsumePartition(topic, 0, offset)
-	if err != nil {
-		panic(err)
+	} else {
+		partitions = append(partitions, int32(partition))
 	}
 
-	defer func() {
-		if err := partitionConsumer.Close(); err != nil {
-			log.Fatalln(err)
-		}
-	}()
+	var wg sync.WaitGroup
 
-	for {
-		select {
-		case msg := <-partitionConsumer.Messages():
-			c <- msg
-		case <-quit:
-			return
+consuming:
+	for partition := range partitions {
+		partitionConsumer, err := consumer.ConsumePartition(topic, int32(partition), 0)
+		if err != nil {
+			log.Printf("Failed to consume partition %v err=%v\n", partition, err)
+			continue consuming
 		}
+		wg.Add(1)
+
+		go func(pc sarama.PartitionConsumer) {
+			for {
+				select {
+				case msg := <-partitionConsumer.Messages():
+					c <- msg
+				case <-quit:
+					partitionConsumer.Close()
+					wg.Done()
+					return
+				}
+			}
+		}(partitionConsumer)
 	}
+	wg.Wait()
+	consumer.Close()
 }
