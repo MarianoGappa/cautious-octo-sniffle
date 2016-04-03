@@ -178,6 +178,15 @@
             return events
         }
 
+        var colorRing = function() {
+            var i = 0
+            return function() {
+                if (++i >= config.colourPalette.length)
+                    i = 0
+                return config.colourPalette[i]
+            }
+        }()
+
         var loadComponents = function() {
             for (var i in config.components) {
                 var component = config.components[i]
@@ -185,8 +194,8 @@
                 var element = document.createElement('div')
                 element.id = 'component_' + component.id
                 element.className = 'detached component'
-                element.style.left = component.left
-                element.style.top = component.top
+
+                document.getElementById('container').appendChild(element)
 
                 if (component.backgroundColor) {
                     element.style.backgroundColor = component.backgroundColor
@@ -195,7 +204,7 @@
                 if (component.width) {
                     element.style.width = component.width
                 } else {
-                    element.style.width = "100px"
+                    element.style.width = "150px"
                 }
 
                 if (component.height) {
@@ -204,13 +213,24 @@
                     element.style.height = "100px"
                 }
 
+                var position = componentPosition(config.components, i)
+                element.style.left = position.left//positions[i].left
+                element.style.top = position.top//positions[i].top
+
                 if (component.img) {
                     var img = document.createElement('img')
                     img.src = config.images[component.img]
                     element.appendChild(img)
+                } else {
+                    var title = document.createElement('span')
+                    title.className = 'component_title'
+                    title.innerHTML = component.id
+                    element.appendChild(title)
+                    element.style.backgroundColor = component.backgroundColor ? component.backgroundColor : colorRing()
+                    title.style.marginTop = "-" + (parseInt(title.offsetHeight) / 2) + "px"
+                    title.style.width = parseInt(element.style.width) - 20 - 2 // 20 = padding
+                    element.style.boxShadow = "0px 2px 2px 0px #282c37"
                 }
-
-                document.getElementById('container').appendChild(element)
             }
         }
 
@@ -271,7 +291,7 @@
             window.setTimeout(removeNodes(element, style), length)
         }
 
-        function guid() {
+        var guid = function() {
           function s4() {
             return Math.floor((1 + Math.random()) * 0x10000)
               .toString(16)
@@ -281,7 +301,7 @@
             s4() + '-' + s4() + s4() + s4();
         }
 
-        function cleanArray(actual) {
+        var cleanArray = function(actual) {
           var newArray = new Array();
           for (var i = 0; i < actual.length; i++) {
             if (actual[i]) {
@@ -289,6 +309,37 @@
             }
           }
           return newArray;
+        }
+
+        var componentPosition = function(components, i) {
+            var defaultPositions = [
+                [],
+                [{left: 50, top: 50}],
+                [{left: 50, top: 50}, {left: 450, top: 450}],
+                [{left: 50, top: 50}, {left: 50, top: 450}, {left: 450, top: 450}],
+                [{left: 50, top: 50}, {left: 50, top: 450}, {left: 450, top: 50}, {left: 450, top: 450}],
+                [{left: 50, top: 250}, {left: 200, top: 50}, {left: 100, top: 450}, {left: 450, top: 220}, {left: 450, top: 450}],
+            ]
+
+            var position = {}
+
+            if (components[i].top != undefined) {
+                position.top = components[i].top
+            } else if (defaultPositions[components.length] != undefined) {
+                position.top = defaultPositions[components.length][i].top
+            } else {
+                position.top = 0
+            }
+
+            if (components[i].left != undefined) {
+                position.left = components[i].left
+            } else if (defaultPositions[components.length] != undefined) {
+                position.left = defaultPositions[components.length][i].left
+            } else {
+                position.left = 0
+            }
+
+            return position
         }
     </script>
     <style>
@@ -331,10 +382,20 @@
         }
 
         .component {
+            border-radius: 15px;
+            text-align: center;
+            position: absolute;
         }
         .component img, .message img {
             max-width:100%;
             max-height:100%;
+        }
+        .component_title {
+            padding: 10px;
+            text-shadow: 1px 1px 1px gray;
+            display: block;
+            position: absolute;
+            top:50%;
         }
         #container {
             background-color: #d9e1e8;

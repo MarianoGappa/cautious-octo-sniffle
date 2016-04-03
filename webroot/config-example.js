@@ -8,19 +8,30 @@ var config = {
         Components are the guys that appear on the UI and exchange
         messages between each other.
 
-        The ids are gonna be used in the "logic" section, where
-        the interactions are defined.
+        Components can appear in the UI as either images or flowchart
+        rectangles with round corners; the rectangles will be used
+        by default if you don't specify an 'img' property.
 
-        The img property is a reference to the "images" section.
+        The ids are mainly gonna be used in the "logic" section, where
+        the interactions are defined, but also as the text inside the
+        UI rectangles if you don't specify an image, so feel free to
+        capitalise and use spaces.
+
+        The img property is a reference to the "images" section below.
+
+        Every property is optional except for the id, even top & left.
+        If you don't specify top & left, flowbro will choose them for
+        up to 5 components, but don't specify it for some but not all,
+        as flowbro won't be smart in that case.
 
         You don't need to set backgroundColor, but it's useful to
-        check if you set the height/width properly. The downside
-        to larger-than-needed dimensions is that the flying messages
+        check if you set the height/width properly for an image. The
+        downside to larger-than-needed dimensions is that the flying messages
         don't center properly on components.
     */
     "components": [
         {
-            "id": "person",
+            "id": "Person",
             "top": 50,
             "left": 70,
             "height": "75px",
@@ -29,30 +40,20 @@ var config = {
             "backgroundColor": "transparent"
         },
         {
-            "id": "server",
+            "id": "Server",
             "top": 250,
-            "left": 300,
-            "width": "50px",
-            "height": "80px",
-            "img": "server",
-            "backgroundColor": "transparent"
+            "left": 250
         },
         {
-            "id": "phone",
+            "id": "Phone",
             "top": 450,
-            "left": 70,
-            "width": "50px",
-            "img": "phone",
-            "backgroundColor": "transparent"
+            "left": 70
         },
         {
-            "id": "tablet",
+            "id": "Tablet",
             "top": 450,
-            "left": 500,
-            "width": "50px",
-            "height": "82px",
-            "img": "tablet",
-            "backgroundColor": "transparent"
+            "left": 425,
+            "backgroundColor": "rgb(150, 150, 200)"
         }
     ],
 
@@ -83,8 +84,8 @@ var config = {
             return [
                     {
                         'eventType': 'streamMessage',
-                        'sourceId': 'person',
-                        'targetId': 'server',
+                        'sourceId': 'Person',
+                        'targetId': 'Server',
                         'caption': 'Person initiates a request to submit content to all devices'
                     }
             ]
@@ -92,8 +93,8 @@ var config = {
             return [
                     {
                         'eventType': 'streamMessage',
-                        'sourceId': 'server',
-                        'targetId': 'phone',
+                        'sourceId': 'Server',
+                        'targetId': 'Phone',
                         'caption': 'Server produces content to cellphone'
                     }
             ]
@@ -101,8 +102,8 @@ var config = {
             return [
                     {
                         'eventType': 'streamMessage',
-                        'sourceId': 'server',
-                        'targetId': 'tablet',
+                        'sourceId': 'Server',
+                        'targetId': 'Tablet',
                         'caption': 'Server produces content to tablet'
                     }
             ]
@@ -112,12 +113,11 @@ var config = {
 
     /*
         defaultMessage is the flying message that is passed around components.
-        Same property rules as components.
     */
     "defaultMessage": {
         "img": "message",
         "height": "38px",
-        "backgroundColor": "inherit"
+        "backgroundColor": "transparent"
     },
 
     /*
@@ -126,11 +126,14 @@ var config = {
     */
     "images" : {
         "message": "images/message.gif",
-        "phone": "images/phone.png",
-        "person": "images/person.png",
-        "tablet": "images/tablet.png",
-        "server": "images/server.png"
+        "person": "images/person.png"
     },
+
+    /*
+        These colours will be used for components with no image specified.
+        An algorithm will cycle through these colours for each component.
+    */
+    "colourPalette" : ["#dad38f","#98a278","#b4756e","#9da998"],
 
     /*
         Incoming events (i.e. kafka messages coming from the websocket)
@@ -143,7 +146,7 @@ var config = {
 
     /*
         How long does it take for one message to go from component A to
-        component b. CSS transition property value.
+        component B. CSS transition property value.
     */
     "animationLengthMilliseconds": 1000,
 
@@ -182,12 +185,15 @@ var config = {
 
         This configuration will be sent to the server, so please don't add
         extra fields or you will likely break the server!
+
+        Use -1 on the partition property to listen to all partitions in the
+        topic. Otherwise, specify the partition number.
     */
     "serverConfig": {
         "consumers" : [
             {
                 "broker" : "localhost:9092",
-                "partition" : 0,
+                "partition" : -1,
                 "topic": "test",
                 "offset": "newest"
             }
