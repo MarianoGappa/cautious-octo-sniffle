@@ -29,7 +29,7 @@ func consume(c chan *sarama.ConsumerMessage, quit chan bool, topic string, broke
 	}
 
 	var partitions []int32
-	if (partition == -1) {
+	if partition == -1 {
 		partitions, err = consumer.Partitions(topic)
 		if err != nil {
 			panic(err)
@@ -41,7 +41,7 @@ func consume(c chan *sarama.ConsumerMessage, quit chan bool, topic string, broke
 	var wg sync.WaitGroup
 
 consuming:
-	for partition := range partitions {
+	for _, partition := range partitions {
 		partitionConsumer, err := consumer.ConsumePartition(topic, int32(partition), 0)
 		if err != nil {
 			log.Printf("Failed to consume partition %v err=%v\n", partition, err)
