@@ -42,7 +42,7 @@ func consume(c chan *sarama.ConsumerMessage, quit chan bool, topic string, broke
 
 consuming:
 	for _, partition := range partitions {
-		partitionConsumer, err := consumer.ConsumePartition(topic, int32(partition), 0)
+		partitionConsumer, err := consumer.ConsumePartition(topic, int32(partition), offset)
 		if err != nil {
 			log.Printf("Failed to consume partition %v err=%v\n", partition, err)
 			continue consuming
