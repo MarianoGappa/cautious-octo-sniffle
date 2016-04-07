@@ -1,2 +1,3 @@
 *.js
 !webroot/config-example.js
+!webroot/jquery-2.2.3.min.js
