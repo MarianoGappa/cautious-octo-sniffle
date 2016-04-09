@@ -87,8 +87,6 @@
                     var event = uiActionQueue.shift()
                     console.log(event.quantity)
                     animateFromTo(document.getElementById('component_' + event.sourceId), document.getElementById('component_' + event.targetId), event.quantity ? event.quantity : 1)
-                    if (event.caption)
-                        log(event.caption)
                 }
             }, config.eventSeparationIntervalMilliseconds)
 
@@ -166,6 +164,8 @@
                     } else {
                         uiActionQueue.push(event)
                     }
+                } else if (event.eventType == 'log' && event.text) {
+                    log(event.text, event.color)
                 }
             }
         }
