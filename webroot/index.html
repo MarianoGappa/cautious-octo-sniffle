@@ -270,7 +270,14 @@
                 var q = document.createElement('h2')
                 q.innerHTML = quantity
                 element.appendChild(q)
+
+                var notRed = quantity * 4 >= 200 ? 55 : 255 - quantity
+                var rgb = 'rgba(255, ' + notRed + ', ' + notRed + ', 0.6)'
+                element.style.background = 'linear-gradient(' + rgb + ', ' + rgb + '), url(images/message.gif)'
+            } else {
+                element.style.background = 'url(images/message.gif)'
             }
+            element.style.backgroundSize = 'cover'
 
             var newTop = target.offsetHeight / 2 - parseInt(element.offsetHeight) / 2 + parseInt(target.offsetTop)
             var newLeft = target.offsetWidth / 2 - parseInt(element.offsetWidth) / 2 + parseInt(target.offsetLeft)
@@ -391,8 +398,6 @@
             position: absolute;
         }
         .message {
-            background-image: url(images/message.gif);
-            background-size: cover;
             width: 50px;
             height: 38px;
         }
@@ -466,7 +471,6 @@
           left: 50%;
           font-size: 2rem;
           transform: translate(-50%, -50%);
-          background-color: rgba(255, 255, 255, 0.6);
         }
     </style>
 </body>
