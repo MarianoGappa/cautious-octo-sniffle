@@ -67,17 +67,17 @@ var config = {
         looks like this:
         (Use your cleverness to infer what each element means in Kafka lingo)
 
-        {"topic": "test", "partition": "0", "offset": "6", "key": "", "value": "tablet"}
+        {"topic": "test", "partition": "0", "offset": "6", "key": "",
+        "value": "tablet", "consumedUnixTimestamp": "1460189668"}
 
         You can use whichever Javascript magic you choose on this function, provided
         that you return an array of ui events as a result (empty array as a default case).
 
-        Ui events are objects that look like the example below. For now, always use
-        'streamMessage' as the 'eventType'; this is a namespace so that in the future
-        other interactions can be added.
+        For now, there are two types of UI interations: 'streamMessage' and 'log'.
+        'streamMessage' is a message flowing from 'sourceId' to 'targetId', and 'log'
+        is an entry on the right panel of the UI.
 
-        'sourceId' and 'targetId' are the ids defined in the "components section"
-        The 'caption' text is shown in the right hand log section in the UI.
+        'sourceId' and 'targetId' are the ids defined in the "components" section
     */
     "logic": function(event) {
         if (event.value.match(/broadcast/i)) {
@@ -85,8 +85,11 @@ var config = {
                     {
                         'eventType': 'streamMessage',
                         'sourceId': 'Person',
-                        'targetId': 'Server',
-                        'caption': 'Person initiates a request to submit content to all devices'
+                        'targetId': 'Server'
+                    },
+                    {
+                        'eventType': 'log',
+                        'text': 'Person initiates a request to submit content to all devices'
                     }
             ]
         } else if (event.value.match(/tablet/i)) {
@@ -94,8 +97,12 @@ var config = {
                     {
                         'eventType': 'streamMessage',
                         'sourceId': 'Server',
-                        'targetId': 'Phone',
-                        'caption': 'Server produces content to cellphone'
+                        'targetId': 'Phone'
+                    },
+                    {
+                        'eventType': 'log',
+                        'text': 'Server produces content to cellphone',
+                        'color': 'happy'
                     }
             ]
         } else if (event.value.match(/cellphone/i)) {
@@ -103,8 +110,12 @@ var config = {
                     {
                         'eventType': 'streamMessage',
                         'sourceId': 'Server',
-                        'targetId': 'Tablet',
-                        'caption': 'Server produces content to tablet'
+                        'targetId': 'Tablet'
+                    },
+                    {
+                        'eventType': 'log',
+                        'text': 'Server produces content to tablet',
+                        'color': 'happy'
                     }
             ]
         } else
@@ -116,7 +127,6 @@ var config = {
         defaultMessage. Will be used in the src attribute of img tags.
     */
     "images" : {
-        "message": "images/message.gif",
         "person": "images/person.png"
     },
 
@@ -159,7 +169,11 @@ var config = {
         ]
     ],
 
-    "rateCalculationEnabled": false,
+    /*
+        When enabled, shows the rate at which messages are being consumed.
+        Doesn't work on documentationMode.
+    */
+    "rateCalculationEnabled": true,
     "rateCalculationIntervalMilliseconds": 1000,
 
     /*

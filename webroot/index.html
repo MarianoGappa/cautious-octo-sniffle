@@ -90,7 +90,7 @@
                 }
             }, config.eventSeparationIntervalMilliseconds)
 
-            if (config.rateCalculationEnabled) {
+            if (config.rateCalculationEnabled && !config.documentationMode) {
                 document.getElementById('footer').style.display = 'block';
 
                 window.setInterval(function(){
@@ -307,7 +307,7 @@
             var last = rateCalculationCache.pop()
             var size = rateCalculationCache.length
 
-            return size < 2 ? 0 : parseInt(size / (last - first + 1))
+            return size < 2 ? size : parseInt(size / (last - first + 1))
         }
 
         var guid = function() {
@@ -460,7 +460,7 @@
             line-height: 50px;
             padding-left: 15px;
             padding-right: 15px;
-            display: hidden;
+            display: none;
         }
         h2 {
           font-weight: 900;
