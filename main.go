@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 type ConsumerConfig struct {
@@ -65,7 +66,9 @@ func onConnected(ws *websocket.Conn) {
 					"\", \"partition\": \"" + strconv.FormatInt(int64(consumerMessage.Partition), 10) +
 					"\", \"offset\": \"" + strconv.FormatInt(consumerMessage.Offset, 10) +
 					"\", \"key\": \"" + strings.Replace(string(consumerMessage.Key), `"`, `\"`, -1) +
-					"\", \"value\": \"" + strings.Replace(string(consumerMessage.Value), `"`, `\"`, -1) + "\"}\n"
+					"\", \"value\": \"" + strings.Replace(string(consumerMessage.Value), `"`, `\"`, -1) +
+					"\", \"consumedUnixTimestamp\": \"" + strconv.FormatInt(time.Now().Unix(), 10) +
+					"\"}\n"
 
 			log.Println("Sending message to WebSocket: " + msg)
 			err := websocket.Message.Send(ws, msg)
