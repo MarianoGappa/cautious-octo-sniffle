@@ -12,6 +12,7 @@
         <section id="container"></section>
         <section id="log"></section>
     </div>
+    <footer id="footer">0 e/s</footer>
     <script type="text/javascript">
         // http://stackoverflow.com/questions/901115/how-can-i-get-query-string-values-in-javascript
         var getParameterByName = function(name, url) {
@@ -35,7 +36,9 @@
 
 
         var documentationModeIterator = 0
-        var uiActionQueue = [];
+        var uiActionQueue = []
+
+        var rateCalculationCache = []
 
         var log = function(message, color) {
             switch (color) {
@@ -85,6 +88,15 @@
                 }
             }, config.eventSeparationIntervalMilliseconds)
 
+            if (config.rateCalculationEnabled) {
+                document.getElementById('footer').style.display = 'block';
+
+                window.setInterval(function(){
+                    document.getElementById('footer').innerHTML = calculateRate() + " e/s"
+                    rateCalculationCache = []
+                }, config.rateCalculationIntervalMilliseconds)
+            }
+
             if (!config.documentationMode) {
                 openWebSocket()
             } else {
@@ -114,6 +126,12 @@
                     for (i in lines) {
                         try {
                             maybeResult = JSON.parse(lines[i])
+
+                            if (config.rateCalculationEnabled && maybeResult.consumedUnixTimestamp) {
+                                console.log(maybeResult.consumedUnixTimestamp)
+                                rateCalculationCache.push(parseInt(maybeResult.consumedUnixTimestamp))
+                            }
+
                             resultData.push(maybeResult)
                         } catch (e) {
                             console.log("Couldn't parse this as JSON: ", lines[i], "\nError: ", e)
@@ -141,7 +159,8 @@
                         function(event) {
                             return function() {
                                 animateFromTo(document.getElementById('component_' + event.sourceId), document.getElementById('component_' + event.targetId))
-                                log(event.caption)
+                                if (event.caption)
+                                    log(event.caption)
                             }
                         }(event)
                     )
@@ -214,8 +233,8 @@
                 }
 
                 var position = componentPosition(config.components, i)
-                element.style.left = position.left//positions[i].left
-                element.style.top = position.top//positions[i].top
+                element.style.left = position.left
+                element.style.top = position.top
 
                 if (component.img) {
                     var img = document.createElement('img')
@@ -289,6 +308,15 @@
             }
 
             window.setTimeout(removeNodes(element, style), length)
+        }
+
+        var calculateRate = function() {
+            rateCalculationCache.sort()
+            var first = rateCalculationCache.shift()
+            var last = rateCalculationCache.pop()
+            var size = rateCalculationCache.length
+
+            return size < 2 ? 0 : parseInt(size / (last - first + 1))
         }
 
         var guid = function() {
@@ -433,6 +461,13 @@
             font-weight: bolder;
             font-size: 15px;
             border: 1px solid black;
+        }
+        footer {
+            position: fixed; bottom: 0px; height: 50px; background-color: gray; color: white;
+            line-height: 50px;
+            padding-left: 15px;
+            padding-right: 15px;
+            display: hidden;
         }
     </style>
 </body>

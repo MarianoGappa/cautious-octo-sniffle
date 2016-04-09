@@ -168,6 +168,9 @@ var config = {
         ]
     ],
 
+    "rateCalculationEnabled": false,
+    "rateCalculationIntervalMilliseconds": 1000,
+
     /*
         Where is the server listening at? Note that the port MUST be equal
         to the one you used when starting the server, as its first argument.
