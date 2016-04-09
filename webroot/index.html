@@ -84,7 +84,11 @@
 
             window.setInterval(function(){
                 if (uiActionQueue.length > 0) {
-                    (uiActionQueue.shift())()
+                    var event = uiActionQueue.shift()
+                    console.log(event.quantity)
+                    animateFromTo(document.getElementById('component_' + event.sourceId), document.getElementById('component_' + event.targetId), event.quantity ? event.quantity : 1)
+                    if (event.caption)
+                        log(event.caption)
                 }
             }, config.eventSeparationIntervalMilliseconds)
 
@@ -120,7 +124,7 @@
             };
 
             ws.onmessage = function (event) {
-                resultData = []
+                consumedMessages = []
                 if (event.data.trim()) {
                     lines = cleanArray(event.data.trim().split(/\n/))
                     for (i in lines) {
@@ -128,18 +132,17 @@
                             maybeResult = JSON.parse(lines[i])
 
                             if (config.rateCalculationEnabled && maybeResult.consumedUnixTimestamp) {
-                                console.log(maybeResult.consumedUnixTimestamp)
                                 rateCalculationCache.push(parseInt(maybeResult.consumedUnixTimestamp))
                             }
 
-                            resultData.push(maybeResult)
+                            consumedMessages.push(maybeResult)
                         } catch (e) {
                             console.log("Couldn't parse this as JSON: ", lines[i], "\nError: ", e)
                         }
                     }
                 }
 
-                processUiEvents(extractEvents(resultData))
+                processUiEvents(consumedMessagesToEvents(consumedMessages))
             }
 
             ws.onclose = function (event) {
@@ -155,15 +158,14 @@
                 var event = events[i]
 
                 if (event.eventType == 'streamMessage') {
-                    uiActionQueue.push(
-                        function(event) {
-                            return function() {
-                                animateFromTo(document.getElementById('component_' + event.sourceId), document.getElementById('component_' + event.targetId))
-                                if (event.caption)
-                                    log(event.caption)
-                            }
-                        }(event)
-                    )
+                    var lastId = uiActionQueue.length - 1
+                    var lastUiElement = uiActionQueue[lastId]
+
+                    if (lastUiElement && lastUiElement.sourceId == event.sourceId && lastUiElement.targetId == event.targetId) {
+                        uiActionQueue[lastId].quantity = uiActionQueue[lastId].quantity ? uiActionQueue[lastId].quantity + 1 : 2
+                    } else {
+                        uiActionQueue.push(event)
+                    }
                 }
             }
         }
@@ -179,16 +181,16 @@
                 newEvents = config.documentationSteps[documentationModeIterator++]
             }
 
-            processUiEvents(extractEvents(newEvents))
+            processUiEvents(consumedMessagesToEvents(newEvents))
         }
 
-        var extractEvents = function(resultData) {
+        var consumedMessagesToEvents = function(consumedMessages) {
             var events = []
-            for (var i in resultData) {
-                if (resultData[i]) {
-                    var newEvents = config.logic(resultData[i], log, state)
+            for (var i in consumedMessages) {
+                if (consumedMessages[i]) {
+                    var newEvents = config.logic(consumedMessages[i], log, state)
                     if (newEvents.length == 0) {
-                        log('Ignoring event: ' + resultData[i].value, 'debug')
+                        log('Ignoring event: ' + consumedMessages[i].value, 'debug')
                     }
                     for (var j in newEvents)
                         events.push(newEvents[j])
@@ -253,43 +255,25 @@
             }
         }
 
-        var animateFromTo = function(source, target) {
+        var animateFromTo = function(source, target, quantity) {
             var element = document.createElement('div')
             element.id = guid()
             element.className = 'detached message'
 
-            if (config.defaultMessage.width) {
-                element.style.width = config.defaultMessage.width
-            } else {
-                element.style.width = "50px"
-            }
-
-            if (config.defaultMessage.height) {
-                element.style.height = config.defaultMessage.height
-            } else {
-                element.style.height = "50px"
-            }
-
-            if (config.defaultMessage.backgroundColor) {
-                element.style.backgroundColor = config.defaultMessage.backgroundColor
-            } else {
-                element.style.backgroundColor = "red"
-            }
-
-            element.style.top = source.offsetHeight / 2 - parseInt(element.style.height) / 2 + parseInt(source.offsetTop)
-            element.style.left = source.offsetWidth / 2 - parseInt(element.style.width) / 2 + parseInt(source.offsetLeft)
-            element.style.zIndex = -1
             document.getElementById('container').appendChild(element)
+            element.style.top = parseInt(source.offsetTop) + (parseInt(source.offsetHeight) / 2) - (parseInt(element.offsetHeight) / 2)
+            element.style.left = parseInt(source.offsetLeft) + (parseInt(source.offsetWidth) / 2) - (parseInt(element.offsetWidth) / 2)
 
-            if (config.defaultMessage.img) {
-                var img = document.createElement('img')
-                img.src = config.images[config.defaultMessage.img]
-                img.style.width = config.defaultMessage.width
-                element.appendChild(img)
+            element.style.zIndex = -1
+
+            if (quantity > 1) {
+                var q = document.createElement('h2')
+                q.innerHTML = quantity
+                element.appendChild(q)
             }
 
-            var newTop = target.offsetHeight / 2 - parseInt(element.style.height) / 2 + parseInt(target.offsetTop)
-            var newLeft = target.offsetWidth / 2 - parseInt(element.style.width) / 2 + parseInt(target.offsetLeft)
+            var newTop = target.offsetHeight / 2 - parseInt(element.offsetHeight) / 2 + parseInt(target.offsetTop)
+            var newLeft = target.offsetWidth / 2 - parseInt(element.offsetWidth) / 2 + parseInt(target.offsetLeft)
 
             style = document.createElement('style')
             style.type = 'text/css'
@@ -407,6 +391,10 @@
             position: absolute;
         }
         .message {
+            background-image: url(images/message.gif);
+            background-size: cover;
+            width: 50px;
+            height: 38px;
         }
 
         .component {
@@ -468,6 +456,17 @@
             padding-left: 15px;
             padding-right: 15px;
             display: hidden;
+        }
+        h2 {
+          font-weight: 900;
+          text-transform: uppercase;
+          margin: 0;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          font-size: 2rem;
+          transform: translate(-50%, -50%);
+          background-color: rgba(255, 255, 255, 0.6);
         }
     </style>
 </body>

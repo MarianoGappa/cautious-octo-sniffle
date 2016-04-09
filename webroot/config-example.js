@@ -112,15 +112,6 @@ var config = {
     },
 
     /*
-        defaultMessage is the flying message that is passed around components.
-    */
-    "defaultMessage": {
-        "img": "message",
-        "height": "38px",
-        "backgroundColor": "transparent"
-    },
-
-    /*
         Images used throughout Flowbro. Use these references on components and
         defaultMessage. Will be used in the src attribute of img tags.
     */
