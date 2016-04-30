@@ -29,13 +29,18 @@ func startConsumers(config *Config, c chan *sarama.ConsumerMessage, quit chan bo
 	for _, consumerConfig := range config.Consumers {
 		topic, broker, partition := consumerConfig.Topic, consumerConfig.Broker, consumerConfig.Partition
 		var offset int64 = -1
-		switch consumerConfig.Offset {
-		case "oldest":
-			offset = -2
-		case "newest":
-			offset = -1
-		default:
-			panic("Invalid value for consumer offset")
+
+		if numericOffset, err := strconv.ParseInt(consumerConfig.Offset, 10, 64); err == nil {
+			offset = numericOffset
+		} else {
+			switch consumerConfig.Offset {
+			case "oldest":
+				offset = -2
+			case "newest":
+				offset = -1
+			default:
+				panic("Invalid value for consumer offset")
+			}
 		}
 
 		go consume(c, quit, topic, broker, partition, offset)
