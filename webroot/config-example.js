@@ -152,6 +152,13 @@ var config = {
     "animationLengthMilliseconds": 1000,
 
     /*
+        When an incoming message goes through the logic function and doesn't
+        produce any events, a log will be issued unless this setting is set
+        to true.
+    */
+    "hideIgnoredMessages": false,
+
+    /*
         If documentationMode is set to true, no WebSocket connection is
         established to the server. Instead, the server's incoming events
         are mocked by the "documentationSteps" array, and they can be

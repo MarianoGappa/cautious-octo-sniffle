@@ -182,7 +182,7 @@
             for (let i in consumedMessages) {
                 if (consumedMessages[i]) {
                     const newEvents = config.logic(consumedMessages[i], log, state)
-                    if (newEvents.length == 0) {
+                    if (newEvents.length == 0 && !config.hideIgnoredMessages) {
                         log(`Ignoring event: ${consumedMessages[i].value}`, 'debug')
                     }
                     for (let j in newEvents)
