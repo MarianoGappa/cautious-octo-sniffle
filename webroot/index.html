@@ -162,7 +162,7 @@
             for (let i in events) {
                 let event = events[i]
 
-                if (event.eventType == 'streamMessage') {
+                if (event.eventType == 'message') {
                     let lastId = eventQueue.length - 1
                     let lastUiElement = eventQueue[lastId]
 

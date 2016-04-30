@@ -73,8 +73,8 @@ var config = {
         You can use whichever Javascript magic you choose on this function, provided
         that you return an array of ui events as a result (empty array as a default case).
 
-        For now, there are two types of UI interations: 'streamMessage' and 'log'.
-        'streamMessage' is a message flowing from 'sourceId' to 'targetId', and 'log'
+        For now, there are two types of UI interations: 'message' and 'log'.
+        'message' is a message flowing from 'sourceId' to 'targetId', and 'log'
         is an entry on the right panel of the UI.
 
         'sourceId' and 'targetId' are the ids defined in the "components" section
@@ -83,7 +83,7 @@ var config = {
         if (event.value.match(/broadcast/i)) {
             return [
                     {
-                        'eventType': 'streamMessage',
+                        'eventType': 'message',
                         'sourceId': 'Person',
                         'targetId': 'Server'
                     },
@@ -95,7 +95,7 @@ var config = {
         } else if (event.value.match(/tablet/i)) {
             return [
                     {
-                        'eventType': 'streamMessage',
+                        'eventType': 'message',
                         'sourceId': 'Server',
                         'targetId': 'Phone'
                     },
@@ -108,7 +108,7 @@ var config = {
         } else if (event.value.match(/cellphone/i)) {
             return [
                     {
-                        'eventType': 'streamMessage',
+                        'eventType': 'message',
                         'sourceId': 'Server',
                         'targetId': 'Tablet'
                     },
