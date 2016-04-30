@@ -5,11 +5,11 @@
     <script type="text/javascript" src="jquery-2.2.3.min.js"></script>
     <div id="titleContainer">
         <div id="title"></div>
-        <nav id="rest">
-        </nav>
+        <nav id="rest"></nav>
+        <div id="clear"></div>
     </div>
     <div id="mainContainer">
-        <section id="container"></section>
+        <section id="left"><div id="container"></div></section>
         <section id="log"></section>
     </div>
     <footer id="footer">0 e/s</footer>
@@ -250,7 +250,8 @@
                     element.style.backgroundColor = component.backgroundColor ? component.backgroundColor : colorRing()
                     title.style.marginTop = "-" + (parseInt(title.offsetHeight) / 2) + "px"
                     title.style.width = parseInt(element.style.width) - 20 - 2 // 20 = padding
-                    element.style.boxShadow = "0px 2px 2px 0px #282c37"
+                    element.style.boxShadow = "0 2px 5px rgba(0,0,0,0.26)"
+                    element.style.textTransform = "uppercase"
                 }
             }
         }
@@ -363,36 +364,37 @@
     </script>
     <style>
         body {
-            background-color: #EEE;
+            background-color: #FFF;
             margin: 0;
             padding: 0;
             line-height: 1;
             font-family: 'Open Sans', 'Verdana', 'sans-serif';
-            color: #282c37;
+            color: white;
         }
         b {
             font-weight: bolder;
             font-size: 18px;
         }
         #titleContainer {
-            display: flex;
-            padding: 20px;
-            font-weight: bolder;
+            width: 100%;
+
             font-size: 26px;
-            background-color: #998CCC;
-            box-shadow: 0px 2px 2px 0px #282c37;
+            background-color: #0091EA;
         }
         #title {
-            flex: 1;
+            padding: 20px;
+            float: left;
         }
         #rest {
-            flex: 1;
+            overflow: auto;
+            padding: 20px;
             text-align: right;
         }
+        #clear {
+            clear: both;
+        }
         #mainContainer {
-            display: flex;
-            flex-wrap: wrap;
-            box-shadow: 0px 2px 2px 0px #282c37;
+            color: black;
         }
         .detached {
             position: absolute;
@@ -418,37 +420,35 @@
             position: absolute;
             top:50%;
         }
-        #container {
-            background-color: #d9e1e8;
-            margin: 0;
-            padding: 0;
-            border: 0;
+        #left {
             z-index: -2;
-            box-shadow: 0px 2px 2px 0px #282c37;
 
             min-width: 700px;
-            min-height: 500px;
-            position: relative;
+            min-height: 100vh;
+
             overflow: hidden;
-            flex: 1;
+            float: left;
+
+            background-color: transparent;
+            box-shadow: inset -3px 3px 3px 1px rgba(0,0,0,0.3);
+        }
+        #container {
+            position: absolute;
         }
         #log {
-            flex: 1;
-            padding: 5px;
+            overflow: hidden;
             min-height: 100vh;
-            box-shadow: -2px 0px 2px 0px #282c37;
-
-            background-color: #9baec8;
+            background-color: #E0E0E0;
         }
         .logline {
-            padding: 5px;
+            padding: 10px 15px 5px 15px;
             display: block;
         }
         button {
             margin-right: 15px;
             padding: 3px 15px 3px 15px;
             font-family: 'Open Sans', 'Verdana', 'sans-serif';
-            box-shadow: 1px 1px 2px 0px #282c37;
+            box-shadow:0 2px 5px rgba(0,0,0,0.26);
             background-color: #282c37;
             color: white;
             font-weight: bolder;
@@ -456,6 +456,7 @@
             border: 1px solid black;
         }
         footer {
+            clear: both;
             position: fixed; bottom: 0px; height: 50px; background-color: gray; color: white;
             line-height: 50px;
             padding-left: 15px;

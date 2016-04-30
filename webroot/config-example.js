@@ -134,7 +134,7 @@ var config = {
         These colours will be used for components with no image specified.
         An algorithm will cycle through these colours for each component.
     */
-    "colourPalette" : ["#dad38f","#98a278","#b4756e","#9da998"],
+    "colourPalette" : ["#4DD0E1","#AED581","#FFD54F","#DCE775","#FFB74D","#81C784","#FFF176","#4DB6AC","#FF8A65"],
 
     /*
         Incoming events (i.e. kafka messages coming from the websocket)
