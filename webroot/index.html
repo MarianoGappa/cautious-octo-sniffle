@@ -1,8 +1,8 @@
 <html><head>
 <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
 </head>
-<body onload="run()">
-    <script type="text/javascript" src="jquery-2.2.3.min.js"></script>
+<body onload="run(5)">
+    <!-- <script type="text/javascript" src="jquery-2.2.3.min.js"></script> -->
     <div id="titleContainer">
         <div id="title"></div>
         <nav id="rest"></nav>
@@ -14,87 +14,91 @@
     </div>
     <footer id="footer">0 e/s</footer>
     <script type="text/javascript">
+        let documentationModeIterator = 0
+        const uiActionQueue = []
+        const state = {}
+        let rateCalculationCache = []
+
+        const _ = a => document.querySelector(a)
+
         // http://stackoverflow.com/questions/901115/how-can-i-get-query-string-values-in-javascript
-        var getParameterByName = function(name, url) {
+        const getParameterByName = (name, url) => {
             if (!url) url = window.location.href;
             url = url.toLowerCase(); // This is just to avoid case sensitiveness
             name = name.replace(/[\[\]]/g, "\\$&").toLowerCase();// This is just to avoid case sensitiveness for query parameter name
-            var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+            const regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
                 results = regex.exec(url);
             if (!results) return null;
             if (!results[2]) return '';
             return decodeURIComponent(results[2].replace(/\+/g, " "));
         }
 
-        var configFileFromQueryString = getParameterByName('config')
-
-        var configFile = configFileFromQueryString || 'config-example'
-
-        var element = document.createElement('script')
-        element.setAttribute('src', configFile + '.js')
-        document.head.appendChild(element)
-
-
-        var documentationModeIterator = 0
-        var uiActionQueue = []
-
-        var rateCalculationCache = []
-
-        var log = function(message, color) {
-            switch (color) {
-                case 'severe':
-                case 'error':
-                    color = '#E53A40'
-                    break
-                case 'warning':
-                    color = '#FFBC42'
-                    break
-                case 'info':
-                    color = 'inherit'
-                    break
-                case 'trace':
-                case 'debug':
-                    color = '#6E7783'
-                    break
-                case 'happy':
-                    color = '#2f751b'
-                    break
-                case '':
-                case undefined:
-                case false:
-                    color = 'inherit'
-            }
-
-            var element = document.createElement('span')
-            element.className = 'logLine'
-            element.style.color = color
-            element.innerHTML = message
-            document.getElementById('log').insertBefore(element, document.getElementById('log').firstChild)
-
-            if (document.getElementById('log').children.length > 1000) {
-                document.getElementById('log').removeChild(document.getElementById('log').lastElementChild)
+        const init = (configFile) => {
+            if (!_(`init_script_${configFile}`)) {
+                const element = document.createElement('script')
+                element.setAttribute('id', `init_script_${configFile}`)
+                element.setAttribute('src', configFile + '.js')
+                element.setAttribute('async', false)
+                document.head.appendChild(element)
             }
         }
 
-        var state = {}
+        const log = (message, _color) => {
+            const colors = {
+                'severe':'#E53A40',
+                'error': '#E53A40',
+                'warning': '#FFBC42',
+                'info': 'inherit',
+                'trace': '#6E7783',
+                'debug': '#6E7783',
+                'happy': '#2f751b',
+                'default': 'inherit'
+            }
 
-        var run = function() {
-            document.getElementById("title").innerHTML = config.title
-            loadComponents()
+            const color = colors[_color] || colors['default']
 
-            window.setInterval(function(){
+            const element = document.createElement('span')
+            element.className = 'logLine'
+            element.style.color = color
+            element.innerHTML = message
+            _('#log').insertBefore(element, _('#log').firstChild)
+
+            if (_('#log').children.length > 1000) {
+                _('#log').removeChild(_('#log').lastElementChild)
+            }
+        }
+
+        const run = (timeout) => {
+            if (typeof config !== 'undefined')
+                doRun()
+            else if (timeout > 0) {
+                console.log("not ready; retrying...")
+                window.setTimeout(() => run(timeout - 1), 50)
+            } else {
+                log('Did you add .js to it? (you shouldn\'t)', 'error')
+                log('Is the ?config=xxx filename wrong?', 'error')
+                log('Did you break the JSON syntax?', 'error')
+                log('Cannot load configuration file', 'error')
+                _('#title').innerHTML = 'Flowbro is drunk :('
+            }
+        }
+
+        const doRun = () => {
+            _('#title').innerHTML = config.title
+            loadComponents(config)
+
+            window.setInterval(() => {
                 if (uiActionQueue.length > 0) {
-                    var event = uiActionQueue.shift()
-                    console.log(event.quantity)
-                    animateFromTo(document.getElementById('component_' + event.sourceId), document.getElementById('component_' + event.targetId), event.quantity ? event.quantity : 1)
+                    const event = uiActionQueue.shift()
+                    animateFromTo(_(`[id='component_${event.sourceId}']`), _(`[id='component_${event.targetId}']`), event.quantity ? event.quantity : 1)
                 }
             }, config.eventSeparationIntervalMilliseconds)
 
             if (config.rateCalculationEnabled && !config.documentationMode) {
-                document.getElementById('footer').style.display = 'block';
+                _('#footer').style.display = 'block';
 
-                window.setInterval(function(){
-                    document.getElementById('footer').innerHTML = calculateRate() + " e/s"
+                window.setInterval(() => {
+                    _('#footer').innerHTML = calculateRate(rateCalculationCache) + " e/s"
                     rateCalculationCache = []
                 }, config.rateCalculationIntervalMilliseconds)
             }
@@ -102,16 +106,16 @@
             if (!config.documentationMode) {
                 openWebSocket()
             } else {
-                document.getElementById('rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">Reset</button><button onclick="javascript:mockPoll()">Next</button>'
+                _('#rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">Reset</button><button onclick="javascript:mockPoll()">Next</button>'
             }
         }
 
-        var openWebSocket = function() {
-            var wsUrl = "ws://" + config.webSocketHost + ":" + config.webSocketPort + "/ws"
-            var ws = new WebSocket(wsUrl)
+        const openWebSocket = () => {
+            const wsUrl = "ws://" + config.webSocketHost + ":" + config.webSocketPort + "/ws"
+            const ws = new WebSocket(wsUrl)
 
-            ws.onopen = function (event) {
-                log("WebSocket open on [" + wsUrl + "]!", 'happy')
+            ws.onopen = (event) => {
+                log(`WebSocket open on [${wsUrl}]!`, 'happy')
                 try {
                     ws.send(JSON.stringify(config.serverConfig))
                     log("Sent configurations to server successfully!", 'happy')
@@ -119,9 +123,9 @@
                     log("Server is drunk :( can't send him configurations!", 'error')
                     console.log(e)
                 }
-            };
+            }
 
-            ws.onmessage = function (event) {
+            ws.onmessage = (event) => {
                 consumedMessages = []
                 if (event.data.trim()) {
                     lines = cleanArray(event.data.trim().split(/\n/))
@@ -135,7 +139,7 @@
 
                             consumedMessages.push(maybeResult)
                         } catch (e) {
-                            console.log("Couldn't parse this as JSON: ", lines[i], "\nError: ", e)
+                            console.log(`Couldn't parse this as JSON: ${lines[i]}`, "\nError: ", e)
                         }
                     }
                 }
@@ -143,21 +147,17 @@
                 processUiEvents(consumedMessagesToEvents(consumedMessages))
             }
 
-            ws.onclose = function (event) {
-              log("WebSocket closed!", 'error');
-            }
-            ws.onerror = function (event) {
-              log("WebSocket had error!" + event, 'error');
-            }
+            ws.onclose = (event) => log("WebSocket closed!", 'error')
+            ws.onerror = (event) => log(`WebSocket had error! ${event}`, 'error')
         }
 
-        var processUiEvents = function(events) {
-            for (var i in events) {
-                var event = events[i]
+        const processUiEvents = (events) => {
+            for (let i in events) {
+                let event = events[i]
 
                 if (event.eventType == 'streamMessage') {
-                    var lastId = uiActionQueue.length - 1
-                    var lastUiElement = uiActionQueue[lastId]
+                    let lastId = uiActionQueue.length - 1
+                    let lastUiElement = uiActionQueue[lastId]
 
                     if (lastUiElement && lastUiElement.sourceId == event.sourceId && lastUiElement.targetId == event.targetId) {
                         uiActionQueue[lastId].quantity = uiActionQueue[lastId].quantity ? uiActionQueue[lastId].quantity + 1 : 2
@@ -170,84 +170,68 @@
             }
         }
 
-        var resetDocumentationMode = function() {
-            documentationModeIterator = 0
-            document.getElementById('log').innerHTML = ''
-        }
+        const resetDocumentationMode = () => { documentationModeIterator = 0; _('#log').innerHTML = ''; }
 
-        var mockPoll = function() {
-            newEvents = []
-            if (config.documentationSteps[documentationModeIterator]) {
-                newEvents = config.documentationSteps[documentationModeIterator++]
-            }
-
+        const mockPoll = () => {
+            newEvents = config.documentationSteps[documentationModeIterator] ? config.documentationSteps[documentationModeIterator++] : []
             processUiEvents(consumedMessagesToEvents(newEvents))
         }
 
-        var consumedMessagesToEvents = function(consumedMessages) {
-            var events = []
-            for (var i in consumedMessages) {
+        const consumedMessagesToEvents = (consumedMessages) => {
+            const events = []
+            for (let i in consumedMessages) {
                 if (consumedMessages[i]) {
-                    var newEvents = config.logic(consumedMessages[i], log, state)
+                    const newEvents = config.logic(consumedMessages[i], log, state)
                     if (newEvents.length == 0) {
-                        log('Ignoring event: ' + consumedMessages[i].value, 'debug')
+                        log(`Ignoring event: ${consumedMessages[i].value}`, 'debug')
                     }
-                    for (var j in newEvents)
+                    for (let j in newEvents)
                         events.push(newEvents[j])
                 }
             }
             return events
         }
 
-        var colorRing = function() {
-            var i = 0
-            return function() {
-                if (++i >= config.colourPalette.length)
-                    i = 0
-                return config.colourPalette[i]
+        function* colorGenerator() {
+            let i = 0
+            while(true) {
+                i = i >= config.colourPalette.length - 1 ? 0 : i + 1
+                yield config.colourPalette[i]
             }
-        }()
+        }
 
-        var loadComponents = function() {
-            for (var i in config.components) {
-                var component = config.components[i]
+        const loadComponents = (config) => {
+            let colorRing = colorGenerator()
+            for (let i in config.components) {
+                const component = config.components[i]
 
-                var element = document.createElement('div')
-                element.id = 'component_' + component.id
+                let element = document.createElement('div')
+                element.id = `component_${component.id}`
                 element.className = 'detached component'
 
-                document.getElementById('container').appendChild(element)
+                _('#container').appendChild(element)
 
                 if (component.backgroundColor) {
                     element.style.backgroundColor = component.backgroundColor
                 }
 
-                if (component.width) {
-                    element.style.width = component.width
-                } else {
-                    element.style.width = "150px"
-                }
+                element.style.width = component.width ? component.width : "150px"
+                element.style.height = component.height ? component.height : "100px"
 
-                if (component.height) {
-                    element.style.height = component.height
-                } else {
-                    element.style.height = "100px"
-                }
-
-                var position = componentPosition(config.components, i)
+                const position = componentPosition(config.components, i)
                 element.style.left = position.left
                 element.style.top = position.top
 
                 if (component.img) {
-                    var img = document.createElement('img')
+                    const img = document.createElement('img')
                     img.src = config.images[component.img]
                     element.appendChild(img)
                 } else {
-                    var title = document.createElement('span')
+                    const title = document.createElement('span')
                     title.className = 'component_title'
                     title.innerHTML = component.id
                     element.appendChild(title)
-                    element.style.backgroundColor = component.backgroundColor ? component.backgroundColor : colorRing()
+                    element.style.backgroundColor = component.backgroundColor ? component.backgroundColor : colorRing.next().value
                     title.style.marginTop = "-" + (parseInt(title.offsetHeight) / 2) + "px"
                     title.style.width = parseInt(element.style.width) - 20 - 2 // 20 = padding
                     element.style.boxShadow = "0 2px 5px rgba(0,0,0,0.26)"
@@ -256,83 +240,65 @@
             }
         }
 
-        var animateFromTo = function(source, target, quantity) {
-            var element = document.createElement('div')
+        const animateFromTo = (source, target, quantity) => {
+            const element = document.createElement('div')
             element.id = guid()
             element.className = 'detached message'
 
-            document.getElementById('container').appendChild(element)
+            _('#container').appendChild(element)
             element.style.top = parseInt(source.offsetTop) + (parseInt(source.offsetHeight) / 2) - (parseInt(element.offsetHeight) / 2)
             element.style.left = parseInt(source.offsetLeft) + (parseInt(source.offsetWidth) / 2) - (parseInt(element.offsetWidth) / 2)
 
             element.style.zIndex = -1
 
             if (quantity > 1) {
-                var q = document.createElement('h2')
+                const q = document.createElement('h2')
                 q.innerHTML = quantity
                 element.appendChild(q)
 
-                var notRed = quantity * 4 >= 200 ? 55 : 255 - quantity
-                var rgb = 'rgba(255, ' + notRed + ', ' + notRed + ', 0.6)'
-                element.style.background = 'linear-gradient(' + rgb + ', ' + rgb + '), url(images/message.gif)'
+                const notRed = quantity * 4 >= 200 ? 55 : 255 - quantity
+                const rgb = `rgba(255, ${notRed}, ${notRed}, 0.6)`
+                element.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
             } else {
                 element.style.background = 'url(images/message.gif)'
             }
             element.style.backgroundSize = 'cover'
 
-            var newTop = target.offsetHeight / 2 - parseInt(element.offsetHeight) / 2 + parseInt(target.offsetTop)
-            var newLeft = target.offsetWidth / 2 - parseInt(element.offsetWidth) / 2 + parseInt(target.offsetLeft)
+            const newTop = target.offsetHeight / 2 - parseInt(element.offsetHeight) / 2 + parseInt(target.offsetTop)
+            const newLeft = target.offsetWidth / 2 - parseInt(element.offsetWidth) / 2 + parseInt(target.offsetLeft)
 
             style = document.createElement('style')
             style.type = 'text/css'
-            var styleId = "style_" + guid()
-            var length = config.animationLengthMilliseconds
-            style.appendChild(document.createTextNode("." + styleId + " { top: " + newTop + "px !important; left: " + newLeft + "px !important; -webkit-transition: top " + length + "ms, left " + length + "ms; /* Safari */ transition: top " + length + "ms, left " + length + "ms;}"))
+            const styleId = `style_${guid()}`
+            const length = config.animationLengthMilliseconds
+            style.appendChild(document.createTextNode(`.${styleId} { top: ${newTop}px !important; left: ${newLeft}px !important; -webkit-transition: top${length}ms, left ${length}ms; /* Safari */ transition: top ${length}ms, left ${length}ms;}`))
             document.body.appendChild(style)
 
-            element.className = styleId + ' detached message'
+            element.className = `${styleId} detached message`
 
-            var removeNodes = function(element, style) {
-                return function() {
-                    element.parentNode.removeChild(element)
-                    style.parentNode.removeChild(style)
-                }
+            const removeNodes = (element, style) => () => {
+                element.parentNode.removeChild(element)
+                style.parentNode.removeChild(style)
             }
 
             window.setTimeout(removeNodes(element, style), length)
         }
 
-        var calculateRate = function() {
+        const calculateRate = (rateCalculationCache) => {
             rateCalculationCache.sort()
-            var first = rateCalculationCache.shift()
-            var last = rateCalculationCache.pop()
-            var size = rateCalculationCache.length
+            const first = rateCalculationCache.shift()
+            const last = rateCalculationCache.pop()
+            const size = rateCalculationCache.length
 
             return size < 2 ? size : parseInt(size / (last - first + 1))
         }
 
-        var guid = function() {
-          function s4() {
-            return Math.floor((1 + Math.random()) * 0x10000)
-              .toString(16)
-              .substring(1)
-          }
-          return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
-            s4() + '-' + s4() + s4() + s4();
-        }
+        const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1)
+        const guid = () => s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4()
+        const cleanArray = (actual) => actual.filter((elem) => Boolean(elem))
 
-        var cleanArray = function(actual) {
-          var newArray = new Array();
-          for (var i = 0; i < actual.length; i++) {
-            if (actual[i]) {
-              newArray.push(actual[i]);
-            }
-          }
-          return newArray;
-        }
-
-        var componentPosition = function(components, i) {
-            var defaultPositions = [
+        const componentPosition = (components, i) => {
+            const defaultPositions = [
                 [],
                 [{left: 50, top: 50}],
                 [{left: 50, top: 50}, {left: 450, top: 450}],
@@ -341,7 +307,7 @@
                 [{left: 50, top: 250}, {left: 200, top: 50}, {left: 100, top: 450}, {left: 450, top: 220}, {left: 450, top: 450}],
             ]
 
-            var position = {}
+            const position = {}
 
             if (components[i].top != undefined) {
                 position.top = components[i].top
@@ -361,6 +327,8 @@
 
             return position
         }
+
+        init(getParameterByName('config') || 'config-example')
     </script>
     <style>
         body {
