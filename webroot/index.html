@@ -88,19 +88,7 @@
             _('#title').innerHTML = config.title
             loadComponents(config)
 
-            window.setInterval(() => {
-                if (eventQueue.length > 0) {
-                    const event = eventQueue.shift()
-                    animateFromTo(_(`[id='component_${event.sourceId}']`), _(`[id='component_${event.targetId}']`), event.quantity ? event.quantity : 1)
-
-                    // Save enqueued animation into event log; keep it <= 100 events
-                    if (!config.documentationMode) {
-                        eventLog.push([event])
-                        if (eventLog.length > 100)
-                            eventLog.shift()
-                    }
-                }
-            }, config.eventSeparationIntervalMilliseconds)
+            window.setInterval(() => showNextUiEvent(), config.eventSeparationIntervalMilliseconds)
 
             startRateCalculation()
 
@@ -109,6 +97,27 @@
                 _('#rest').innerHTML = '<button onclick="javascript:replayEventLog()">Replay latest events</button><button onclick="javascript:cleanEventLog()">Clean event log</button>'
             } else {
                 _('#rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">Reset</button><button onclick="javascript:mockPoll()">Next</button>'
+            }
+        }
+
+        const showNextUiEvent = () => {
+            if (eventQueue.length > 0) {
+                const event = eventQueue.shift()
+
+                if (event.eventType == 'message') {
+                    animateFromTo(_(`[id='component_${event.sourceId}']`), _(`[id='component_${event.targetId}']`), event.quantity ? event.quantity : 1)
+                }
+
+                if (typeof event.logs !== 'undefined') {
+                    for (l of event.logs) { log(l.text, l.color) }
+                }
+
+                // Save enqueued animation into event log; keep it <= 100 events
+                if (!config.documentationMode) {
+                    eventLog.push([event])
+                    if (eventLog.length > 100)
+                        eventLog.shift()
+                }
             }
         }
 
@@ -157,21 +166,54 @@
             ws.onerror = (event) => log(`WebSocket had error! ${event}`, 'error')
         }
 
-        const processUiEvents = (events) => {
-            for (let i in events) {
-                let event = events[i]
+        const processUiEvents = (events) => { for (event of events) { aggregateEventOnEventQueue(event) } }
 
-                if (event.eventType == 'message') {
-                    let lastId = eventQueue.length - 1
-                    let lastUiElement = eventQueue[lastId]
+        const aggregateEventOnEventQueue = (event) => {
+            const indexOfSimilarMessage = (event, eventQueue) => {
+                let index = undefined
+                eventQueue.forEach((v, i) => { if (v.sourceId == event.sourceId && v.targetId == event.targetId) index = i })
+                return index
+            }
 
-                    if (lastUiElement && lastUiElement.sourceId == event.sourceId && lastUiElement.targetId == event.targetId) {
-                        eventQueue[lastId].quantity = eventQueue[lastId].quantity ? eventQueue[lastId].quantity + 1 : 2
-                    } else {
-                        eventQueue.push(event)
+            // if it's an A -> B type of event
+            if (event.eventType == 'message') {
+                const i = indexOfSimilarMessage(event, eventQueue)
+
+                // if a message from the same A -> B exists, +1 its quantity and add its log if present
+                if (typeof i !== 'undefined') {
+                    eventQueue[i].quantity = eventQueue[i].quantity ? eventQueue[i].quantity + 1 : 2
+                    if (typeof event.text !== 'undefined') eventQueue[i].logs.push(event)
+
+                // if it's the first message from A -> B, add it to the queue and start a collection of logs for it
+                } else {
+                    let aggregatedEvent = event
+                    if (typeof event.text !== 'undefined') {
+                        if (typeof event.logs !== 'undefined') {
+                            aggregatedEvent.logs.push(event)
+                        } else {
+                            aggregatedEvent.logs = [event]
+                        }
                     }
-                } else if (event.eventType == 'log' && event.text) {
-                    log(event.text, event.color)
+                    eventQueue.push(aggregatedEvent)
+                }
+
+            // if it's a log type of event
+            } else if (event.eventType == 'log') {
+                let lastId = eventQueue.length - 1
+
+                // if the last event on the queue is a log event, add this log to it
+                if (eventQueue[lastId] && eventQueue[lastId].eventType == 'log') {
+                    eventQueue[lastId].logs.push(event)
+
+                // otherwise, push a new event and start a collection of logs for it
+                } else {
+                    let aggregatedEvent = event
+                    if (typeof event.logs !== 'undefined') {
+                        aggregatedEvent.logs.push(event)
+                    } else {
+                        aggregatedEvent.logs = [event]
+                    }
+                    eventQueue.push(aggregatedEvent)
                 }
             }
         }
@@ -215,7 +257,6 @@
         const refreshDocumentationModeStepCount = () => {
             _('#footer').style.display = 'block';
             _('#footer').innerHTML = `${documentationModeIterator}/${config.documentationSteps.length} events`
-            console.log(config.documentationSteps)
         }
 
         const consumedMessagesToEvents = (consumedMessages) => {

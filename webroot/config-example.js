@@ -80,40 +80,31 @@ var config = {
         'sourceId' and 'targetId' are the ids defined in the "components" section
     */
     "logic": function(event) {
-        if (event.value.match(/broadcast/i)) {
+        if (event.topic == "test" && event.value.match(/broadcast/i)) {
             return [
                     {
                         'eventType': 'message',
                         'sourceId': 'Person',
-                        'targetId': 'Server'
-                    },
-                    {
-                        'eventType': 'log',
+                        'targetId': 'Server',
                         'text': 'Person initiates a request to submit content to all devices'
                     }
             ]
-        } else if (event.value.match(/tablet/i)) {
+        } else if (event.topic == "test" && event.value.match(/tablet/i)) {
             return [
                     {
                         'eventType': 'message',
                         'sourceId': 'Server',
-                        'targetId': 'Phone'
-                    },
-                    {
-                        'eventType': 'log',
+                        'targetId': 'Phone',
                         'text': 'Server produces content to cellphone',
                         'color': 'happy'
                     }
             ]
-        } else if (event.value.match(/cellphone/i)) {
+        } else if (event.topic == "test" && event.value.match(/cellphone/i)) {
             return [
                     {
                         'eventType': 'message',
                         'sourceId': 'Server',
-                        'targetId': 'Tablet'
-                    },
-                    {
-                        'eventType': 'log',
+                        'targetId': 'Tablet',
                         'text': 'Server produces content to tablet',
                         'color': 'happy'
                     }
@@ -169,10 +160,12 @@ var config = {
     */
     "documentationMode": true,
     "documentationSteps": [
-        [{"topic": "example", "value": "broadcast request [123456]"}],
         [
-            {"topic": "example", "value": "produced content for tablet"},
-            {"topic": "example", "value": "produced content for cellphone"},
+            {"eventType":"message","sourceId":"Person","targetId":"Server","text":"Person initiates a request to submit content to all devices"}
+        ],
+        [
+            {"eventType":"message","sourceId":"Server","targetId":"Phone","text":"Server produces content to cellphone","color":"happy"},
+            {"eventType":"message","sourceId":"Server","targetId":"Tablet","text":"Server produces content to tablet","color":"happy"}
         ]
     ],
 
