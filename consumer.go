@@ -8,11 +8,15 @@ import (
 
 func consume(c chan *sarama.ConsumerMessage, quit chan bool, topic string, broker string, partition int, offset int64) {
 	if topic == "" {
-		panic("Please define topic name for your consumer")
+		log.Println("Please define topic name for your consumer")
+		quit <- true
+		return
 	}
 
 	if c == nil {
-		panic("Channel is not initialised")
+		log.Println("Channel is not initialised")
+		quit <- true
+		return
 	}
 
 	if broker == "" {
@@ -25,14 +29,18 @@ func consume(c chan *sarama.ConsumerMessage, quit chan bool, topic string, broke
 
 	consumer, err := sarama.NewConsumer([]string{broker}, nil)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		quit <- true
+		return
 	}
 
 	var partitions []int32
 	if partition == -1 {
 		partitions, err = consumer.Partitions(topic)
 		if err != nil {
-			panic(err)
+			log.Println(err)
+			quit <- true
+			return
 		}
 	} else {
 		partitions = append(partitions, int32(partition))

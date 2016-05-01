@@ -39,7 +39,9 @@ func startConsumers(config *Config, c chan *sarama.ConsumerMessage, quit chan bo
 			case "newest":
 				offset = -1
 			default:
-				panic("Invalid value for consumer offset")
+				log.Println("Invalid value for consumer offset")
+				quit <- true
+				return
 			}
 		}
 
