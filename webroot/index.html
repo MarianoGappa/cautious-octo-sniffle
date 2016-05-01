@@ -176,7 +176,7 @@
             }
         }
 
-        const cleanEventLog = () => eventLog.length = 0
+        const cleanEventLog = () => { eventLog.length = 0; log('-- Replay event log is now empty --', 'debug'); }
         const replayEventLog = () => {
             if (eventLog.length > 0) {
                 config.documentationMode = true
