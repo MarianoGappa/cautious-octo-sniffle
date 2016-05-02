@@ -166,7 +166,12 @@
             ws.onerror = (event) => log(`WebSocket had error! ${event}`, 'error')
         }
 
-        const processUiEvents = (events) => { for (event of events) { aggregateEventOnEventQueue(event) } }
+        const processUiEvents = (events) => { for (event of events) {
+            if (config.documentationMode)
+                eventQueue.push(event)
+            else
+                aggregateEventOnEventQueue(event)
+        } }
 
         const aggregateEventOnEventQueue = (event) => {
             const indexOfSimilarMessage = (event, eventQueue) => {
