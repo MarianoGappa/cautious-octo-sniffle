@@ -110,6 +110,8 @@
 
                 if (typeof event.logs !== 'undefined') {
                     for (l of event.logs) { log(l.text, l.color) }
+                } else if (event.text) {
+                    log(event.text, event.color)
                 }
 
                 // Save enqueued animation into event log; keep it <= 100 events
