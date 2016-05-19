@@ -38,7 +38,7 @@
             if (!_(`init_script_${configFile}`)) {
                 const element = document.createElement('script')
                 element.setAttribute('id', `init_script_${configFile}`)
-                element.setAttribute('src', configFile + '.js')
+                element.setAttribute('src', `/configs/${configFile}.js`)
                 element.setAttribute('async', false)
                 document.head.appendChild(element)
             }

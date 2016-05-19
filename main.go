@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/Shopify/sarama"
 	"golang.org/x/net/websocket"
+	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +14,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"path/filepath"
 )
 
 type ConsumerConfig struct {
@@ -23,6 +26,11 @@ type ConsumerConfig struct {
 
 type Config struct {
 	Consumers []ConsumerConfig `json:"consumers"`
+}
+
+type Link struct {
+	Url   string
+	Title string
 }
 
 func startConsumers(config *Config, c chan *sarama.ConsumerMessage, quit chan bool) {
@@ -94,6 +102,60 @@ func onConnected(ws *websocket.Conn) {
 	}
 }
 
+func baseHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/" && r.URL.RawQuery == "" {
+		serveBaseHTML(w, r)
+	} else {
+		log.Println(r.URL.Path)
+		chttp.ServeHTTP(w, r)
+	}
+}
+
+func serveBaseHTML(w http.ResponseWriter, r *http.Request) {
+	baseHTML := `
+		<!DOCTYPE html>
+		<html>
+		<head>
+		    <title>Flowbro</title>
+		</head>
+		<body>
+		    <ul>
+		        {{range $i, $e := .}}<li>
+		            <a href="{{.Url}}">{{.Title}}</a>
+		        </li>{{end}}
+		    </ul>
+		    <style>
+
+		    </style>
+		</body>
+		</html>
+	`
+
+	files, err := ioutil.ReadDir("webroot/configs")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	links := []Link{}
+	for _, file := range files {
+		config := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+		links = append(links, Link{
+			Url:   "?config=" + config,
+			Title: config,
+		})
+	}
+
+	templ, err := template.New("base").Parse(baseHTML)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = templ.Execute(w, links)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func listenToSignals() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
@@ -104,11 +166,14 @@ func listenToSignals() {
 	}()
 }
 
+var chttp = http.NewServeMux()
+
 func main() {
 	listenToSignals()
 
 	http.Handle("/ws", websocket.Handler(onConnected))
-	http.Handle("/", http.FileServer(http.Dir("webroot")))
+	chttp.Handle("/", http.FileServer(http.Dir("webroot")))
+	http.HandleFunc("/", baseHandler)
 
 	if len(os.Args) == 1 {
 		fmt.Println("usage: flowbro {portToServeOn}\n")
