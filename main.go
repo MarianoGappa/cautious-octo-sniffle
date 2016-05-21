@@ -104,7 +104,7 @@ func baseHandler(w http.ResponseWriter, r *http.Request) {
 		serveBaseHTML(w, r)
 	} else {
 		log.Println(r.URL.Path)
-		chttp.ServeHTTP(w, r)
+		http.FileServer(http.Dir("webroot")).ServeHTTP(w, r)
 	}
 }
 
@@ -118,14 +118,13 @@ func listenToSignals() {
 	}()
 }
 
-var chttp = http.NewServeMux()
+var mux = http.NewServeMux()
 
 func main() {
 	listenToSignals()
 
-	http.Handle("/ws", websocket.Handler(onConnected))
-	chttp.Handle("/", http.FileServer(http.Dir("webroot")))
-	http.HandleFunc("/", baseHandler)
+	mux.Handle("/ws", websocket.Handler(onConnected))
+	mux.HandleFunc("/", baseHandler)
 
 	port := "8080"
 	if len(os.Args) >= 2 {
@@ -133,7 +132,7 @@ func main() {
 	}
 
 	fmt.Printf("Flowbro is your bro on localhost:%v!\n", port)
-	err := http.ListenAndServe(":"+port, nil)
+	err := http.ListenAndServe(":"+port, mux)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
