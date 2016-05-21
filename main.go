@@ -126,7 +126,7 @@ func main() {
 	mux.Handle("/ws", websocket.Handler(onConnected))
 	mux.HandleFunc("/", baseHandler)
 
-	port := "8080"
+	port := "41234"
 	if len(os.Args) >= 2 {
 		port = os.Args[1]
 	}
