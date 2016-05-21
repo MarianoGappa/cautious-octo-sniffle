@@ -175,13 +175,13 @@ func main() {
 	chttp.Handle("/", http.FileServer(http.Dir("webroot")))
 	http.HandleFunc("/", baseHandler)
 
-	if len(os.Args) == 1 {
-		fmt.Println("usage: flowbro {portToServeOn}\n")
-		os.Exit(2)
+	port := "8080"
+	if len(os.Args) >= 2 {
+		port = os.Args[1]
 	}
 
-	port := os.Args[1]
-	err := http.ListenAndServe(":"+string(port), nil)
+	fmt.Printf("Flowbro is your bro on localhost:%v!\n", port)
+	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
