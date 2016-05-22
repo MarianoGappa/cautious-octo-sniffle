@@ -43,3 +43,4 @@ release-darwin:
 
 release: TAG ?= latest
 release: release-linux release-darwin
+	git tag ${TAG}
