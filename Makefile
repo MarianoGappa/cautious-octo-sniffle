@@ -35,11 +35,19 @@ release-linux: TAG ?= latest
 release-linux: ARTIFACT = flowbro-${TAG}-linux
 release-linux:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ${ARTIFACT} -a .
+	tar -cf ${ARTIFACT}.tar ${ARTIFACT}
+	git ls-files webroot/ | tr '\n' ' ' | xargs tar -rf ${ARTIFACT}.tar
+	gzip ${ARTIFACT}.tar
+	rm -rf ${ARTIFACT}
 
 release-darwin: TAG ?= latest
 release-darwin: ARTIFACT = flowbro-${TAG}-darwin
 release-darwin:
 	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o ${ARTIFACT} -a .
+	tar -cf ${ARTIFACT}.tar ${ARTIFACT}
+	git ls-files webroot/ | tr '\n' ' ' | xargs tar -rf ${ARTIFACT}.tar
+	gzip ${ARTIFACT}.tar
+	rm -rf ${ARTIFACT}
 
 release: TAG ?= latest
 release: release-linux release-darwin
