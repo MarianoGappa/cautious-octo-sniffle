@@ -12,8 +12,7 @@ make
 - Flowbro should be ready on http://localhost:41234
 
 ## I don't have nor want to know anything about Go!
-- Fine. Use the latest release binary for your OS: https://github.com/MarianoGappa/flowbro/releases
-- Unpack the source code on the same folder. Flowbro doesn't need the source code to work, but it needs the `webroot` folder within it.
+Fine. Use the latest release binary for your OS: https://github.com/MarianoGappa/flowbro/releases
 
 ## Making your first Flowbro configuration
 - Clone `webroot/configs/config-example.js`; give it a name according to your project e.g.: `website-requests.js`
@@ -29,6 +28,9 @@ $ make image
 ```
 $ make imagerun
 ```
+
+## Can I deploy Flowbro with Kubernetes?
+No :( https://github.com/kubernetes/kubernetes/issues/25126
 
 ## Can I contribute?
 Yes, please.
