@@ -103,12 +103,14 @@ func serveBaseHTML(w http.ResponseWriter, r *http.Request) {
 
 	links := []Link{}
 	for _, file := range files {
-		config := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
-		title := strings.Title(strings.Replace(strings.Replace(config, "-", " ", -1), "_", " ", -1))
-		links = append(links, Link{
-			Url:   "?config=" + config,
-			Title: title,
-		})
+		if filepath.Ext(file.Name()) == ".js" {
+			config := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+			title := strings.Title(strings.Replace(strings.Replace(config, "-", " ", -1), "_", " ", -1))
+			links = append(links, Link{
+				Url:   "?config=" + config,
+				Title: title,
+			})
+		}
 	}
 
 	templ, err := template.New("base").Parse(baseHTML)
