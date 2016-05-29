@@ -124,7 +124,7 @@
         }
 
         const openWebSocket = () => {
-            const wsUrl = "ws://" + config.webSocketHost + ":" + config.webSocketPort + "/ws"
+            const wsUrl = "ws://" + config.webSocketAddress + "/ws"
             const ws = new WebSocket(wsUrl)
 
             ws.onopen = (event) => {

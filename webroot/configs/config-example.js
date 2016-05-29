@@ -177,11 +177,11 @@ var config = {
     "rateCalculationIntervalMilliseconds": 1000,
 
     /*
-        Where is the server listening at? Note that the port MUST be equal
-        to the one you used when starting the server, as its first argument.
+        Where is the server listening at? ws://[this_is_the_address]/ws
+        e.g. localhost:41234
+        Flowbro starts on port 41234 by default.
     */
-    "webSocketHost": "localhost",
-    "webSocketPort": "41234",
+    "webSocketAddress": "localhost:41234",
 
     /*
         Please include all Kafka topic/partition pairs that you need to
