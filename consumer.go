@@ -1,21 +1,22 @@
 package main
 
 import (
-	"github.com/Shopify/sarama"
 	"log"
 	"sync"
+
+	"github.com/Shopify/sarama"
 )
 
-func consume(c chan *sarama.ConsumerMessage, quit chan bool, topic string, broker string, partition int, offset int64) {
+func consume(c chan *sarama.ConsumerMessage, quit chan struct{}, topic string, broker string, partition int, offset int64) {
 	if topic == "" {
 		log.Println("Please define topic name for your consumer")
-		quit <- true
+		close(quit)
 		return
 	}
 
 	if c == nil {
 		log.Println("Channel is not initialised")
-		quit <- true
+		close(quit)
 		return
 	}
 
@@ -30,7 +31,7 @@ func consume(c chan *sarama.ConsumerMessage, quit chan bool, topic string, broke
 	consumer, err := sarama.NewConsumer([]string{broker}, nil)
 	if err != nil {
 		log.Println(err)
-		quit <- true
+		close(quit)
 		return
 	}
 
@@ -39,7 +40,7 @@ func consume(c chan *sarama.ConsumerMessage, quit chan bool, topic string, broke
 		partitions, err = consumer.Partitions(topic)
 		if err != nil {
 			log.Println(err)
-			quit <- true
+			close(quit)
 			return
 		}
 	} else {

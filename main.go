@@ -2,9 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/Shopify/sarama"
-	"golang.org/x/net/websocket"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,6 +11,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/Shopify/sarama"
+	"golang.org/x/net/websocket"
 )
 
 type ConsumerConfig struct {
@@ -30,7 +32,7 @@ type Link struct {
 	Title string
 }
 
-func startConsumers(config *Config, c chan *sarama.ConsumerMessage, quit chan bool) {
+func startConsumers(config *Config, c chan *sarama.ConsumerMessage, quit chan struct{}) {
 	for _, consumerConfig := range config.Consumers {
 		topic, broker, partition := consumerConfig.Topic, consumerConfig.Broker, consumerConfig.Partition
 		var offset int64 = -1
@@ -45,7 +47,7 @@ func startConsumers(config *Config, c chan *sarama.ConsumerMessage, quit chan bo
 				offset = -1
 			default:
 				log.Println("Invalid value for consumer offset")
-				quit <- true
+				close(quit)
 				return
 			}
 		}
@@ -65,10 +67,9 @@ func onConnected(ws *websocket.Conn) {
 		return
 	}
 
-	quit := make(chan bool)
 	c := make(chan *sarama.ConsumerMessage)
 
-	startConsumers(&config, c, quit)
+	startConsumers(&config, c, q)
 
 	for {
 		select {
@@ -86,9 +87,9 @@ func onConnected(ws *websocket.Conn) {
 			err := websocket.Message.Send(ws, msg)
 			if err != nil {
 				log.Println("Error while trying to send to WebSocket: ", err)
-				quit <- true
+				close(q)
 			}
-		case <-quit:
+		case <-q:
 			err := ws.Close()
 			log.Println("Closed WebSocket connection given quit signal.")
 			if err != nil {
@@ -108,32 +109,51 @@ func baseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func listenToSignals() {
+func listenToSignals(q chan struct{}) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		<-signals
-		os.Exit(1)
+		close(q)
 	}()
 }
 
 var mux = http.NewServeMux()
 
+var q = make(chan struct{})
+
 func main() {
-	listenToSignals()
+	listenToSignals(q)
 
 	mux.Handle("/ws", websocket.Handler(onConnected))
 	mux.HandleFunc("/", baseHandler)
 
-	port := "41234"
+	port := 41234
 	if len(os.Args) >= 2 {
-		port = os.Args[1]
+		var err error
+		port, err = strconv.Atoi(os.Args[1])
+		if err != nil {
+			log.Fatalf("Port receoved from flag could not be converted to int: %v", err)
+		}
+	}
+
+	listener, err := net.ListenTCP("tcp", &net.TCPAddr{
+		IP:   net.ParseIP("localhost").To4(),
+		Port: port,
+	})
+	if err != nil {
+		log.Fatalf("Listen: %v", err)
 	}
 
 	fmt.Printf("Flowbro is your bro on localhost:%v!\n", port)
-	err := http.ListenAndServe(":"+port, mux)
-	if err != nil {
-		log.Fatal("ListenAndServe:", err)
-	}
+
+	go func(listener *net.TCPListener, q chan struct{}) {
+		<-q
+		log.Println("Received quit signal; closing Snitch.")
+		defer log.Println("closed Snitch")
+		listener.Close()
+	}(listener, q)
+
+	http.Serve(listener, mux)
 }
