@@ -9,11 +9,8 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"syscall"
-	"time"
 
-	"github.com/Shopify/sarama"
 	"golang.org/x/net/websocket"
 )
 
@@ -28,12 +25,7 @@ type Config struct {
 	Consumers []consumerConfig `json:"consumers"`
 }
 
-type link struct {
-	URL   string
-	Title string
-}
-
-func onConnected(mainQuit chan struct{}) func(ws *websocket.Conn) {
+func onConnected(q chan struct{}) func(ws *websocket.Conn) {
 	return func(ws *websocket.Conn) {
 		log.Println("Opened WebSocket connection!")
 
@@ -45,47 +37,21 @@ func onConnected(mainQuit chan struct{}) func(ws *websocket.Conn) {
 			return
 		}
 
-		c := make(chan *sarama.ConsumerMessage)
-		reqQuit := make(chan struct{})
-
-		startConsumers(&config, c, mainQuit, reqQuit)
-
-		for {
-			select {
-			case consumerMessage := <-c:
-				msg :=
-					"{\"topic\": \"" + consumerMessage.Topic +
-						"\", \"partition\": \"" + strconv.FormatInt(int64(consumerMessage.Partition), 10) +
-						"\", \"offset\": \"" + strconv.FormatInt(consumerMessage.Offset, 10) +
-						"\", \"key\": \"" + strings.Replace(string(consumerMessage.Key), `"`, `\"`, -1) +
-						"\", \"value\": \"" + strings.Replace(string(consumerMessage.Value), `"`, `\"`, -1) +
-						"\", \"consumedUnixTimestamp\": \"" + strconv.FormatInt(time.Now().Unix(), 10) +
-						"\"}\n"
-
-				log.Println("Sending message to WebSocket: " + msg)
-				err := websocket.Message.Send(ws, msg)
-				if err != nil {
-					log.Println("Error while trying to send to WebSocket: ", err)
-					err := ws.Close()
-					if err != nil {
-						log.Println("Error while closing WebSocket!: ", err)
-					} else {
-						log.Println("Closed WebSocket connection given quit signal.")
-					}
-					return
-				}
-			case <-reqQuit:
-				err := ws.Close()
-				if err != nil {
-					log.Println("Error while closing WebSocket!: ", err)
-				} else {
-					log.Println("Closed WebSocket connection given quit signal.")
-				}
-				return
-			case <-mainQuit:
-				close(reqQuit)
+		pc, err := setupConsumers(&config)
+		if err != nil {
+			log.Printf("Closing WebSocket connection due to: %v\n", err)
+			err := ws.Close()
+			if err != nil {
+				log.Println("Error while closing WebSocket!: ", err)
+			} else {
+				log.Println("Closed WebSocket connection.")
 			}
+			return
 		}
+
+		c := demuxMessages(pc, q)
+
+		sendMessagesToWsBlocking(ws, c, q)
 	}
 }
 
@@ -152,7 +118,7 @@ func main() {
 
 	baseTemplate, err := parseBasePageTemplate()
 	if err != nil {
-		log.Fatalf("Could: %v", err)
+		log.Fatalf("Could not parse base page template: %v", err)
 	}
 
 	mustListenToSignals(q)

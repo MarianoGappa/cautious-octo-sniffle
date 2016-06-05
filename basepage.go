@@ -8,18 +8,23 @@ import (
 	"strings"
 )
 
+type Link struct {
+	URL   string
+	Title string
+}
+
 func serveBaseHTML(template *template.Template, w http.ResponseWriter, r *http.Request) error {
 	files, err := ioutil.ReadDir("webroot/configs")
 	if err != nil {
 		return err
 	}
 
-	links := []link{}
+	links := []Link{}
 	for _, file := range files {
 		if filepath.Ext(file.Name()) == ".js" {
 			config := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
 			title := strings.Title(strings.Replace(strings.Replace(config, "-", " ", -1), "_", " ", -1))
-			links = append(links, link{
+			links = append(links, Link{
 				URL:   "?config=" + config,
 				Title: title,
 			})
@@ -43,8 +48,8 @@ func parseBasePageTemplate() (*template.Template, error) {
 			  </div>
 			  <div class="row content">
 			      <ul>
-				{{range $i, $e := .}}<li>
-				    <a href="{{.Url}}">{{.Title}}</a>
+				{{range .}}<li>
+				    <a href="{{.URL}}">{{.Title}}</a>
 				</li>{{end}}
 			      </ul>
 			  </div>
