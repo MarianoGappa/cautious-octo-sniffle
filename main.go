@@ -33,46 +33,55 @@ type link struct {
 	Title string
 }
 
-func onConnected(ws *websocket.Conn) {
-	log.Println("Opened WebSocket connection!")
+func onConnected(q chan struct{}) func(ws *websocket.Conn) {
+	return func(ws *websocket.Conn) {
+		log.Println("Opened WebSocket connection!")
 
-	var config Config
-	err := websocket.JSON.Receive(ws, &config)
-	if err != nil {
-		ws.Close()
-		log.Println("Didn't receive config from WebSocket!", err)
-		return
-	}
-
-	c := make(chan *sarama.ConsumerMessage)
-
-	startConsumers(&config, c, q)
-
-	for {
-		select {
-		case consumerMessage := <-c:
-			msg :=
-				"{\"topic\": \"" + consumerMessage.Topic +
-					"\", \"partition\": \"" + strconv.FormatInt(int64(consumerMessage.Partition), 10) +
-					"\", \"offset\": \"" + strconv.FormatInt(consumerMessage.Offset, 10) +
-					"\", \"key\": \"" + strings.Replace(string(consumerMessage.Key), `"`, `\"`, -1) +
-					"\", \"value\": \"" + strings.Replace(string(consumerMessage.Value), `"`, `\"`, -1) +
-					"\", \"consumedUnixTimestamp\": \"" + strconv.FormatInt(time.Now().Unix(), 10) +
-					"\"}\n"
-
-			log.Println("Sending message to WebSocket: " + msg)
-			err := websocket.Message.Send(ws, msg)
-			if err != nil {
-				log.Println("Error while trying to send to WebSocket: ", err)
-				close(q)
-			}
-		case <-q:
-			err := ws.Close()
-			log.Println("Closed WebSocket connection given quit signal.")
-			if err != nil {
-				log.Println("Error while closing WebSocket!: ", err)
-			}
+		var config Config
+		err := websocket.JSON.Receive(ws, &config)
+		if err != nil {
+			ws.Close()
+			log.Println("Didn't receive config from WebSocket!", err)
 			return
+		}
+
+		c := make(chan *sarama.ConsumerMessage)
+
+		startConsumers(&config, c, q)
+
+		for {
+			select {
+			case consumerMessage := <-c:
+				msg :=
+					"{\"topic\": \"" + consumerMessage.Topic +
+						"\", \"partition\": \"" + strconv.FormatInt(int64(consumerMessage.Partition), 10) +
+						"\", \"offset\": \"" + strconv.FormatInt(consumerMessage.Offset, 10) +
+						"\", \"key\": \"" + strings.Replace(string(consumerMessage.Key), `"`, `\"`, -1) +
+						"\", \"value\": \"" + strings.Replace(string(consumerMessage.Value), `"`, `\"`, -1) +
+						"\", \"consumedUnixTimestamp\": \"" + strconv.FormatInt(time.Now().Unix(), 10) +
+						"\"}\n"
+
+				log.Println("Sending message to WebSocket: " + msg)
+				err := websocket.Message.Send(ws, msg)
+				if err != nil {
+					log.Println("Error while trying to send to WebSocket: ", err)
+					err := ws.Close()
+					if err != nil {
+						log.Println("Error while closing WebSocket!: ", err)
+					} else {
+						log.Println("Closed WebSocket connection given quit signal.")
+					}
+					return
+				}
+			case <-q:
+				err := ws.Close()
+				if err != nil {
+					log.Println("Error while closing WebSocket!: ", err)
+				} else {
+					log.Println("Closed WebSocket connection given quit signal.")
+				}
+				return
+			}
 		}
 	}
 }
@@ -125,14 +134,13 @@ func newListener(port int, q chan struct{}) (*net.TCPListener, error) {
 	return listener, nil
 }
 
-var mux = http.NewServeMux()
-var q = make(chan struct{})
-
 func main() {
 	port, err := resolvePort(41234)
 	if err != nil {
 		log.Fatalf("Port received from flag could not be converted to int: %v", err)
 	}
+
+	q := make(chan struct{})
 
 	listener, err := newListener(port, q)
 	if err != nil {
@@ -148,7 +156,8 @@ func main() {
 
 	fmt.Printf("Flowbro is your bro on localhost:%v!\n", port)
 
-	mux.Handle("/ws", websocket.Handler(onConnected))
+	mux := http.NewServeMux()
+	mux.Handle("/ws", websocket.Handler(onConnected(q)))
 	mux.HandleFunc("/", baseHandler(baseTemplate))
 
 	http.Serve(listener, mux)
