@@ -104,7 +104,6 @@ func baseHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/" && r.URL.RawQuery == "" {
 		serveBaseHTML(w, r)
 	} else {
-		log.Println(r.URL.Path)
 		http.FileServer(http.Dir("webroot")).ServeHTTP(w, r)
 	}
 }
@@ -119,41 +118,53 @@ func listenToSignals(q chan struct{}) {
 	}()
 }
 
-var mux = http.NewServeMux()
-
-var q = make(chan struct{})
-
-func main() {
-	listenToSignals(q)
-
-	mux.Handle("/ws", websocket.Handler(onConnected))
-	mux.HandleFunc("/", baseHandler)
-
-	port := 41234
+func resolvePort(def int) (int, error) {
 	if len(os.Args) >= 2 {
-		var err error
-		port, err = strconv.Atoi(os.Args[1])
-		if err != nil {
-			log.Fatalf("Port receoved from flag could not be converted to int: %v", err)
-		}
+		return strconv.Atoi(os.Args[1])
 	}
+	return def, nil
+}
 
+func newListener(port int, q chan struct{}) (*net.TCPListener, error) {
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   net.ParseIP("localhost").To4(),
 		Port: port,
 	})
 	if err != nil {
-		log.Fatalf("Listen: %v", err)
+		return listener, err
 	}
-
-	fmt.Printf("Flowbro is your bro on localhost:%v!\n", port)
 
 	go func(listener *net.TCPListener, q chan struct{}) {
 		<-q
-		log.Println("Received quit signal; closing Snitch.")
-		defer log.Println("closed Snitch")
+		log.Println("Received quit signal; closing tcp listener.")
 		listener.Close()
+		log.Println("closed tcp listener")
 	}(listener, q)
+
+	return listener, nil
+}
+
+var mux = http.NewServeMux()
+
+var q = make(chan struct{})
+
+func main() {
+	port, err := resolvePort(41234)
+	if err != nil {
+		log.Fatalf("Port receoved from flag could not be converted to int: %v", err)
+	}
+
+	listener, err := newListener(port, q)
+	if err != nil {
+		log.Fatalf("Listen: %v", err)
+	}
+
+	listenToSignals(q)
+
+	fmt.Printf("Flowbro is your bro on localhost:%v!\n", port)
+
+	mux.Handle("/ws", websocket.Handler(onConnected))
+	mux.HandleFunc("/", baseHandler)
 
 	http.Serve(listener, mux)
 }
