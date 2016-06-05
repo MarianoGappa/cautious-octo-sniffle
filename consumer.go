@@ -8,7 +8,7 @@ import (
 	"github.com/Shopify/sarama"
 )
 
-func startConsumers(config *Config, c chan *sarama.ConsumerMessage, quit chan struct{}) {
+func startConsumers(config *Config, c chan *sarama.ConsumerMessage, mainQuit chan struct{}, reqQuit chan struct{}) {
 	for _, consumerConfig := range config.Consumers {
 		topic, broker, partition := consumerConfig.Topic, consumerConfig.Broker, consumerConfig.Partition
 		var offset int64 = -1
@@ -23,25 +23,25 @@ func startConsumers(config *Config, c chan *sarama.ConsumerMessage, quit chan st
 				offset = -1
 			default:
 				log.Println("Invalid value for consumer offset")
-				close(quit)
+				close(reqQuit)
 				return
 			}
 		}
 
-		go consume(c, quit, topic, broker, partition, offset)
+		go consume(c, mainQuit, reqQuit, topic, broker, partition, offset)
 	}
 }
 
-func consume(c chan *sarama.ConsumerMessage, quit chan struct{}, topic string, broker string, partition int, offset int64) {
+func consume(c chan *sarama.ConsumerMessage, mainQuit chan struct{}, reqQuit chan struct{}, topic string, broker string, partition int, offset int64) {
 	if topic == "" {
 		log.Println("Please define topic name for your consumer")
-		close(quit)
+		close(reqQuit)
 		return
 	}
 
 	if c == nil {
 		log.Println("Channel is not initialised")
-		close(quit)
+		close(reqQuit)
 		return
 	}
 
@@ -56,7 +56,7 @@ func consume(c chan *sarama.ConsumerMessage, quit chan struct{}, topic string, b
 	consumer, err := sarama.NewConsumer([]string{broker}, nil)
 	if err != nil {
 		log.Println(err)
-		close(quit)
+		close(reqQuit)
 		return
 	}
 
@@ -65,7 +65,7 @@ func consume(c chan *sarama.ConsumerMessage, quit chan struct{}, topic string, b
 		partitions, err = consumer.Partitions(topic)
 		if err != nil {
 			log.Println(err)
-			close(quit)
+			close(reqQuit)
 			return
 		}
 	} else {
@@ -88,7 +88,9 @@ consuming:
 				select {
 				case msg := <-partitionConsumer.Messages():
 					c <- msg
-				case <-quit:
+				case <-mainQuit:
+					close(reqQuit)
+				case <-reqQuit:
 					partitionConsumer.Close()
 					wg.Done()
 					return

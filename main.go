@@ -33,7 +33,7 @@ type link struct {
 	Title string
 }
 
-func onConnected(q chan struct{}) func(ws *websocket.Conn) {
+func onConnected(mainQuit chan struct{}) func(ws *websocket.Conn) {
 	return func(ws *websocket.Conn) {
 		log.Println("Opened WebSocket connection!")
 
@@ -46,8 +46,9 @@ func onConnected(q chan struct{}) func(ws *websocket.Conn) {
 		}
 
 		c := make(chan *sarama.ConsumerMessage)
+		reqQuit := make(chan struct{})
 
-		startConsumers(&config, c, q)
+		startConsumers(&config, c, mainQuit, reqQuit)
 
 		for {
 			select {
@@ -73,7 +74,7 @@ func onConnected(q chan struct{}) func(ws *websocket.Conn) {
 					}
 					return
 				}
-			case <-q:
+			case <-reqQuit:
 				err := ws.Close()
 				if err != nil {
 					log.Println("Error while closing WebSocket!: ", err)
@@ -81,6 +82,8 @@ func onConnected(q chan struct{}) func(ws *websocket.Conn) {
 					log.Println("Closed WebSocket connection given quit signal.")
 				}
 				return
+			case <-mainQuit:
+				close(reqQuit)
 			}
 		}
 	}
