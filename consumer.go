@@ -2,10 +2,35 @@ package main
 
 import (
 	"log"
+	"strconv"
 	"sync"
 
 	"github.com/Shopify/sarama"
 )
+
+func startConsumers(config *Config, c chan *sarama.ConsumerMessage, quit chan struct{}) {
+	for _, consumerConfig := range config.Consumers {
+		topic, broker, partition := consumerConfig.Topic, consumerConfig.Broker, consumerConfig.Partition
+		var offset int64 = -1
+
+		if numericOffset, err := strconv.ParseInt(consumerConfig.Offset, 10, 64); err == nil {
+			offset = numericOffset
+		} else {
+			switch consumerConfig.Offset {
+			case "oldest":
+				offset = -2
+			case "newest":
+				offset = -1
+			default:
+				log.Println("Invalid value for consumer offset")
+				close(quit)
+				return
+			}
+		}
+
+		go consume(c, quit, topic, broker, partition, offset)
+	}
+}
 
 func consume(c chan *sarama.ConsumerMessage, quit chan struct{}, topic string, broker string, partition int, offset int64) {
 	if topic == "" {

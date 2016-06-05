@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"log"
 	"net"
 	"net/http"
@@ -16,7 +17,7 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-type ConsumerConfig struct {
+type consumerConfig struct {
 	Broker    string `json:"broker"`
 	Partition int    `json:"partition"`
 	Topic     string `json:"topic"`
@@ -24,36 +25,12 @@ type ConsumerConfig struct {
 }
 
 type Config struct {
-	Consumers []ConsumerConfig `json:"consumers"`
+	Consumers []consumerConfig `json:"consumers"`
 }
 
-type Link struct {
-	Url   string
+type link struct {
+	URL   string
 	Title string
-}
-
-func startConsumers(config *Config, c chan *sarama.ConsumerMessage, quit chan struct{}) {
-	for _, consumerConfig := range config.Consumers {
-		topic, broker, partition := consumerConfig.Topic, consumerConfig.Broker, consumerConfig.Partition
-		var offset int64 = -1
-
-		if numericOffset, err := strconv.ParseInt(consumerConfig.Offset, 10, 64); err == nil {
-			offset = numericOffset
-		} else {
-			switch consumerConfig.Offset {
-			case "oldest":
-				offset = -2
-			case "newest":
-				offset = -1
-			default:
-				log.Println("Invalid value for consumer offset")
-				close(quit)
-				return
-			}
-		}
-
-		go consume(c, quit, topic, broker, partition, offset)
-	}
 }
 
 func onConnected(ws *websocket.Conn) {
@@ -100,15 +77,19 @@ func onConnected(ws *websocket.Conn) {
 	}
 }
 
-func baseHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/" && r.URL.RawQuery == "" {
-		serveBaseHTML(w, r)
-	} else {
-		http.FileServer(http.Dir("webroot")).ServeHTTP(w, r)
+func baseHandler(template *template.Template) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" && r.URL.RawQuery == "" {
+			if err := serveBaseHTML(template, w, r); err != nil {
+				log.Printf("Loading base page failed; ignoring. err=%v\n", err)
+			}
+		} else {
+			http.FileServer(http.Dir("webroot")).ServeHTTP(w, r)
+		}
 	}
 }
 
-func listenToSignals(q chan struct{}) {
+func mustListenToSignals(q chan struct{}) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
@@ -145,26 +126,30 @@ func newListener(port int, q chan struct{}) (*net.TCPListener, error) {
 }
 
 var mux = http.NewServeMux()
-
 var q = make(chan struct{})
 
 func main() {
 	port, err := resolvePort(41234)
 	if err != nil {
-		log.Fatalf("Port receoved from flag could not be converted to int: %v", err)
+		log.Fatalf("Port received from flag could not be converted to int: %v", err)
 	}
 
 	listener, err := newListener(port, q)
 	if err != nil {
-		log.Fatalf("Listen: %v", err)
+		log.Fatalf("Could not open tcp listener: %v", err)
 	}
 
-	listenToSignals(q)
+	baseTemplate, err := parseBasePageTemplate()
+	if err != nil {
+		log.Fatalf("Could: %v", err)
+	}
+
+	mustListenToSignals(q)
 
 	fmt.Printf("Flowbro is your bro on localhost:%v!\n", port)
 
 	mux.Handle("/ws", websocket.Handler(onConnected))
-	mux.HandleFunc("/", baseHandler)
+	mux.HandleFunc("/", baseHandler(baseTemplate))
 
 	http.Serve(listener, mux)
 }

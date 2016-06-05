@@ -1,15 +1,35 @@
 package main
 
 import (
-	"net/http"
-	"io/ioutil"
-	"strings"
-	"path/filepath"
-	"log"
 	"html/template"
+	"io/ioutil"
+	"net/http"
+	"path/filepath"
+	"strings"
 )
 
-func serveBaseHTML(w http.ResponseWriter, r *http.Request) {
+func serveBaseHTML(template *template.Template, w http.ResponseWriter, r *http.Request) error {
+	files, err := ioutil.ReadDir("webroot/configs")
+	if err != nil {
+		return err
+	}
+
+	links := []link{}
+	for _, file := range files {
+		if filepath.Ext(file.Name()) == ".js" {
+			config := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+			title := strings.Title(strings.Replace(strings.Replace(config, "-", " ", -1), "_", " ", -1))
+			links = append(links, link{
+				URL:   "?config=" + config,
+				Title: title,
+			})
+		}
+	}
+
+	return template.Execute(w, links)
+}
+
+func parseBasePageTemplate() (*template.Template, error) {
 	baseHTML := `
 			<!DOCTYPE html>
 			<html>
@@ -96,31 +116,5 @@ func serveBaseHTML(w http.ResponseWriter, r *http.Request) {
 			</html>
 	`
 
-	files, err := ioutil.ReadDir("webroot/configs")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	links := []Link{}
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".js" {
-			config := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
-			title := strings.Title(strings.Replace(strings.Replace(config, "-", " ", -1), "_", " ", -1))
-			links = append(links, Link{
-				Url:   "?config=" + config,
-				Title: title,
-			})
-		}
-	}
-
-	templ, err := template.New("base").Parse(baseHTML)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = templ.Execute(w, links)
-	if err != nil {
-		log.Fatal(err)
-	}
+	return template.New("base").Parse(baseHTML)
 }
-
