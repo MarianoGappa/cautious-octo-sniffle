@@ -59,7 +59,7 @@ func onConnected(q chan struct{}) func(ws *websocket.Conn) {
 
 		c := demuxMessages(pc, q)
 
-		sendMessagesToWsBlocking(ws, c, q, sender{})
+		sendMessagesToWsBlocking(ws, c, q, sender{}, timeNow{})
 		closeAll(closeables)
 	}
 }

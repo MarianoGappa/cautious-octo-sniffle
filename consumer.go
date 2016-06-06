@@ -150,7 +150,17 @@ func (s sender) Send(ws *websocket.Conn, msg string) error {
 	return websocket.Message.Send(ws, msg)
 }
 
-func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender) {
+type iTimeNow interface {
+	Unix() int64
+}
+
+type timeNow struct{}
+
+func (t timeNow) Unix() int64 {
+	return time.Now().Unix()
+}
+
+func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow) {
 	for {
 		select {
 		case cMsg := <-c:
@@ -160,7 +170,7 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 					`", "offset": "` + strconv.FormatInt(cMsg.Offset, 10) +
 					`", "key": "` + strings.Replace(string(cMsg.Key), `"`, `\"`, -1) +
 					`", "value": "` + strings.Replace(string(cMsg.Value), `"`, `\"`, -1) +
-					`", "consumedUnixTimestamp": "` + strconv.FormatInt(time.Now().Unix(), 10) +
+					`", "consumedUnixTimestamp": "` + strconv.FormatInt(timeNow.Unix(), 10) +
 					`"}` + "\n"
 
 			log.Println("Sending message to WebSocket: " + msg)

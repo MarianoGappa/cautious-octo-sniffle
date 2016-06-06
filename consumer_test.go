@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"golang.org/x/net/websocket"
+
 	"github.com/Shopify/sarama"
 )
 
@@ -87,6 +89,43 @@ func TestDemuxMessages(t *testing.T) {
 	<-o
 	m3 <- &sarama.ConsumerMessage{}
 	<-o
+
+	close(q)
+}
+
+type mockSender struct {
+	err   error
+	outCh chan string
+}
+
+func (m mockSender) Send(ws *websocket.Conn, msg string) error {
+	m.outCh <- msg
+	return m.err
+}
+
+type mockTimeNow struct {
+	timestamp int64
+}
+
+func (m mockTimeNow) Unix() int64 {
+	return m.timestamp
+}
+
+func TestSendMessagesToWsBlocking(t *testing.T) {
+	c := make(chan *sarama.ConsumerMessage)
+	q := make(chan struct{})
+	o := make(chan string)
+
+	go sendMessagesToWsBlocking(&websocket.Conn{}, c, q, mockSender{outCh: o}, mockTimeNow{timestamp: 123456})
+
+	c <- &sarama.ConsumerMessage{Key: []byte("key"), Value: []byte("value"), Topic: "topic", Partition: 0, Offset: 123}
+	s := <-o
+
+	expected := `{"topic": "topic", "partition": "0", "offset": "123", "key": "key", "value": "value", "consumedUnixTimestamp": "123456"}` + "\n"
+
+	if s != expected {
+		t.Errorf("Result was %v rather than %v", s, expected)
+	}
 
 	close(q)
 }
