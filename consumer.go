@@ -17,20 +17,6 @@ func setupConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, []io.Closer
 	closeables := []io.Closer{}
 	for _, consumerConfig := range conf.Consumers {
 		topic, brokerString, partition := consumerConfig.Topic, consumerConfig.Broker, consumerConfig.Partition
-		var offset int64 = -1
-
-		if numericOffset, err := strconv.ParseInt(consumerConfig.Offset, 10, 64); err == nil {
-			offset = numericOffset
-		} else {
-			switch consumerConfig.Offset {
-			case "oldest":
-				offset = -2
-			case "newest":
-				offset = -1
-			default:
-				return nil, closeables, fmt.Errorf("Invalid value for consumer offset")
-			}
-		}
 
 		if topic == "" {
 			return nil, closeables, fmt.Errorf("Please define topic name for your consumer")
@@ -40,11 +26,8 @@ func setupConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, []io.Closer
 			brokerString = "localhost:9092"
 		}
 
-		if offset == 0 {
-			offset = sarama.OffsetNewest
-		}
-
 		brokers := strings.Split(brokerString, ",")
+
 		consumer, err := sarama.NewConsumer(brokers, nil)
 		if err != nil {
 			return nil, closeables, fmt.Errorf("Error creating consumer. err=%v", err)
@@ -61,6 +44,11 @@ func setupConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, []io.Closer
 		}
 
 		for _, partition := range partitions {
+			offset, err := resolveOffset(consumerConfig.Offset, brokers, topic, partition)
+			if err != nil {
+				return nil, closeables, fmt.Errorf("Could not resolve offset for %v, %v, %v. err=%v", brokers, topic, partition, err)
+			}
+
 			partitionConsumer, err := consumer.ConsumePartition(topic, int32(partition), offset)
 			if err != nil {
 				return nil, closeables, fmt.Errorf("Failed to consume partition %v err=%v\n", partition, err)
@@ -72,6 +60,42 @@ func setupConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, []io.Closer
 		closeables = append(closeables, consumer)
 	}
 	return partitionConsumers, closeables, nil
+}
+
+func resolveOffset(configOffset string, brokers []string, topic string, partition int32) (int64, error) {
+	if configOffset == "oldest" {
+		return sarama.OffsetOldest, nil
+	} else if configOffset == "newest" {
+		return sarama.OffsetNewest, nil
+	} else if numericOffset, err := strconv.ParseInt(configOffset, 10, 64); err == nil {
+		if numericOffset >= -2 {
+			return numericOffset, nil
+		}
+
+		client, err := sarama.NewClient(brokers, nil)
+		if err != nil {
+			return 0, fmt.Errorf("Failed to create client for %v, %v, %v", brokers, topic, partition)
+		}
+		defer client.Close()
+
+		oldest, err := client.GetOffset(topic, partition, sarama.OffsetOldest)
+		if err != nil {
+			return 0, err
+		}
+
+		newest, err := client.GetOffset(topic, partition, sarama.OffsetNewest)
+		if err != nil {
+			return 0, err
+		}
+
+		if newest+numericOffset < oldest {
+			return oldest, nil
+		}
+
+		return newest + numericOffset, nil
+	}
+
+	return 0, fmt.Errorf("Invalid value for consumer offset")
 }
 
 func demuxMessages(pc []<-chan *sarama.ConsumerMessage, q chan struct{}) chan *sarama.ConsumerMessage {
