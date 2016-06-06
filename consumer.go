@@ -115,7 +115,17 @@ func demuxMessages(pc []<-chan *sarama.ConsumerMessage, q chan struct{}) chan *s
 	return c
 }
 
-func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}) {
+type iSender interface {
+	Send(*websocket.Conn, string) error
+}
+
+type sender struct{}
+
+func (s sender) Send(ws *websocket.Conn, msg string) error {
+	return websocket.Message.Send(ws, msg)
+}
+
+func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender) {
 	for {
 		select {
 		case cMsg := <-c:
@@ -129,7 +139,7 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 					`"}` + "\n"
 
 			log.Println("Sending message to WebSocket: " + msg)
-			err := websocket.Message.Send(ws, msg)
+			err := sender.Send(ws, msg)
 			if err != nil {
 				log.Printf("Error while trying to send to WebSocket: err=%v\n", err)
 				return
