@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"testing"
+
+	"github.com/Shopify/sarama"
 )
 
 type mockClientCreator struct {
@@ -60,4 +62,31 @@ func TestResolveOffset(t *testing.T) {
 	if offset != 100 {
 		t.Error("Offset should be 100 if -10 is specified and offset can be between [100, 105]")
 	}
+}
+
+func makeReadOnly(m chan *sarama.ConsumerMessage) <-chan *sarama.ConsumerMessage {
+	return m
+}
+
+func TestDemuxMessages(t *testing.T) {
+	m1 := make(chan *sarama.ConsumerMessage)
+	m2 := make(chan *sarama.ConsumerMessage)
+	m3 := make(chan *sarama.ConsumerMessage)
+
+	mro1 := makeReadOnly(m1)
+	mro2 := makeReadOnly(m2)
+	mro3 := makeReadOnly(m3)
+	m := []<-chan *sarama.ConsumerMessage{mro1, mro2, mro3}
+	q := make(chan struct{})
+
+	o := demuxMessages(m, q)
+
+	m1 <- &sarama.ConsumerMessage{}
+	<-o
+	m2 <- &sarama.ConsumerMessage{}
+	<-o
+	m3 <- &sarama.ConsumerMessage{}
+	<-o
+
+	close(q)
 }
