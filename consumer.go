@@ -44,7 +44,7 @@ func setupConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, []io.Closer
 		}
 
 		for _, partition := range partitions {
-			offset, err := resolveOffset(consumerConfig.Offset, brokers, topic, partition)
+			offset, err := resolveOffset(consumerConfig.Offset, brokers, topic, partition, clientCreator{})
 			if err != nil {
 				return nil, closeables, fmt.Errorf("Could not resolve offset for %v, %v, %v. err=%v", brokers, topic, partition, err)
 			}
@@ -62,7 +62,32 @@ func setupConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, []io.Closer
 	return partitionConsumers, closeables, nil
 }
 
-func resolveOffset(configOffset string, brokers []string, topic string, partition int32) (int64, error) {
+type iClient interface {
+	GetOffset(string, int32, int64) (int64, error)
+	Close() error
+}
+
+type client struct{}
+
+func (c client) GetOffset(topic string, partition int32, time int64) (int64, error) {
+	return c.GetOffset(topic, partition, time)
+}
+
+func (c client) Close() error {
+	return c.Close()
+}
+
+type iClientCreator interface {
+	NewClient([]string) (iClient, error)
+}
+
+type clientCreator struct{}
+
+func (s clientCreator) NewClient(brokers []string) (iClient, error) {
+	return sarama.NewClient(brokers, nil)
+}
+
+func resolveOffset(configOffset string, brokers []string, topic string, partition int32, clientCreator iClientCreator) (int64, error) {
 	if configOffset == "oldest" {
 		return sarama.OffsetOldest, nil
 	} else if configOffset == "newest" {
@@ -72,7 +97,7 @@ func resolveOffset(configOffset string, brokers []string, topic string, partitio
 			return numericOffset, nil
 		}
 
-		client, err := sarama.NewClient(brokers, nil)
+		client, err := clientCreator.NewClient(brokers)
 		if err != nil {
 			return 0, fmt.Errorf("Failed to create client for %v, %v, %v", brokers, topic, partition)
 		}
