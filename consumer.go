@@ -96,13 +96,13 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 		select {
 		case cMsg := <-c:
 			msg :=
-				"{\"topic\": \"" + cMsg.Topic +
-					"\", \"partition\": \"" + strconv.FormatInt(int64(cMsg.Partition), 10) +
-					"\", \"offset\": \"" + strconv.FormatInt(cMsg.Offset, 10) +
-					"\", \"key\": \"" + strings.Replace(string(cMsg.Key), `"`, `\"`, -1) +
-					"\", \"value\": \"" + strings.Replace(string(cMsg.Value), `"`, `\"`, -1) +
-					"\", \"consumedUnixTimestamp\": \"" + strconv.FormatInt(time.Now().Unix(), 10) +
-					"\"}\n"
+				`{"topic": "` + cMsg.Topic +
+					`", "partition": "` + strconv.FormatInt(int64(cMsg.Partition), 10) +
+					`", "offset": "` + strconv.FormatInt(cMsg.Offset, 10) +
+					`", "key": "` + strings.Replace(string(cMsg.Key), `"`, `\"`, -1) +
+					`", "value": "` + strings.Replace(string(cMsg.Value), `"`, `\"`, -1) +
+					`", "consumedUnixTimestamp": "` + strconv.FormatInt(time.Now().Unix(), 10) +
+					`"}` + "\n"
 
 			log.Println("Sending message to WebSocket: " + msg)
 			err := websocket.Message.Send(ws, msg)
