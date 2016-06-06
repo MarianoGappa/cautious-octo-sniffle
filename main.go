@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -25,6 +26,18 @@ type Config struct {
 	Consumers []consumerConfig `json:"consumers"`
 }
 
+func closeAll(cls []io.Closer) {
+	log.Printf("Closing %v closeables used on this websocket\n", len(cls))
+	for _, cl := range cls {
+		if err := cl.Close(); err != nil {
+			log.Printf("Failed to close: %v", err)
+		} else {
+			log.Printf("Closeable %v closed successfully!", cl)
+		}
+	}
+	log.Printf("Finished trying to close %v closeables\n", len(cls))
+}
+
 func onConnected(q chan struct{}) func(ws *websocket.Conn) {
 	return func(ws *websocket.Conn) {
 		log.Println("Opened WebSocket connection!")
@@ -37,21 +50,17 @@ func onConnected(q chan struct{}) func(ws *websocket.Conn) {
 			return
 		}
 
-		pc, err := setupConsumers(&config)
+		pc, closeables, err := setupConsumers(&config)
+		closeables = append(closeables, ws)
 		if err != nil {
 			log.Printf("Closing WebSocket connection due to: %v\n", err)
-			err := ws.Close()
-			if err != nil {
-				log.Println("Error while closing WebSocket!: ", err)
-			} else {
-				log.Println("Closed WebSocket connection.")
-			}
-			return
+			closeAll(closeables)
 		}
 
 		c := demuxMessages(pc, q)
 
 		sendMessagesToWsBlocking(ws, c, q)
+		closeAll(closeables)
 	}
 }
 

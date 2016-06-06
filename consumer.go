@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"strconv"
 	"strings"
@@ -11,9 +12,10 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-func setupConsumers(config *Config) ([]<-chan *sarama.ConsumerMessage, error) {
+func setupConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, []io.Closer, error) {
 	partitionConsumers := []<-chan *sarama.ConsumerMessage{}
-	for _, consumerConfig := range config.Consumers {
+	closeables := []io.Closer{}
+	for _, consumerConfig := range conf.Consumers {
 		topic, brokerString, partition := consumerConfig.Topic, consumerConfig.Broker, consumerConfig.Partition
 		var offset int64 = -1
 
@@ -26,12 +28,12 @@ func setupConsumers(config *Config) ([]<-chan *sarama.ConsumerMessage, error) {
 			case "newest":
 				offset = -1
 			default:
-				return nil, fmt.Errorf("Invalid value for consumer offset")
+				return nil, closeables, fmt.Errorf("Invalid value for consumer offset")
 			}
 		}
 
 		if topic == "" {
-			return nil, fmt.Errorf("Please define topic name for your consumer")
+			return nil, closeables, fmt.Errorf("Please define topic name for your consumer")
 		}
 
 		if brokerString == "" {
@@ -45,14 +47,14 @@ func setupConsumers(config *Config) ([]<-chan *sarama.ConsumerMessage, error) {
 		brokers := strings.Split(brokerString, ",")
 		consumer, err := sarama.NewConsumer(brokers, nil)
 		if err != nil {
-			return nil, fmt.Errorf("Error creating consumer. err=%v", err)
+			return nil, closeables, fmt.Errorf("Error creating consumer. err=%v", err)
 		}
 
 		var partitions []int32
 		if partition == -1 {
 			partitions, err = consumer.Partitions(topic)
 			if err != nil {
-				return nil, fmt.Errorf("Error fetching partitions for topic. err=%v", err)
+				return nil, closeables, fmt.Errorf("Error fetching partitions for topic. err=%v", err)
 			}
 		} else {
 			partitions = append(partitions, int32(partition))
@@ -61,13 +63,15 @@ func setupConsumers(config *Config) ([]<-chan *sarama.ConsumerMessage, error) {
 		for _, partition := range partitions {
 			partitionConsumer, err := consumer.ConsumePartition(topic, int32(partition), offset)
 			if err != nil {
-				return nil, fmt.Errorf("Failed to consume partition %v err=%v\n", partition, err)
+				return nil, closeables, fmt.Errorf("Failed to consume partition %v err=%v\n", partition, err)
 			}
 
 			partitionConsumers = append(partitionConsumers, partitionConsumer.Messages())
+			closeables = append(closeables, partitionConsumer)
 		}
+		closeables = append(closeables, consumer)
 	}
-	return partitionConsumers, nil
+	return partitionConsumers, closeables, nil
 }
 
 func demuxMessages(pc []<-chan *sarama.ConsumerMessage, q chan struct{}) chan *sarama.ConsumerMessage {
@@ -103,22 +107,11 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 			log.Println("Sending message to WebSocket: " + msg)
 			err := websocket.Message.Send(ws, msg)
 			if err != nil {
-				log.Println("Error while trying to send to WebSocket: ", err)
-				err := ws.Close()
-				if err != nil {
-					log.Println("Error while closing WebSocket!: ", err)
-				} else {
-					log.Println("Closed WebSocket connection given quit signal.")
-				}
+				log.Printf("Error while trying to send to WebSocket: err=%v\n", err)
 				return
 			}
 		case <-q:
-			err := ws.Close()
-			if err != nil {
-				log.Println("Error while closing WebSocket!: ", err)
-			} else {
-				log.Println("Closed WebSocket connection given quit signal.")
-			}
+			log.Println("Received quit signal")
 			return
 		}
 	}
