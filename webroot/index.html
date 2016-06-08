@@ -23,10 +23,13 @@
         const _ = a => document.querySelector(a)
 
         // http://stackoverflow.com/questions/901115/how-can-i-get-query-string-values-in-javascript
-        const getParameterByName = (name, url) => {
-            if (!url) url = window.location.href;
-            url = url.toLowerCase(); // This is just to avoid case sensitiveness
-            name = name.replace(/[\[\]]/g, "\\$&").toLowerCase();// This is just to avoid case sensitiveness for query parameter name
+        const getParameterByName = (name, noLowercase) => {
+            url = window.location.href;
+            name = name.replace(/[\[\]]/g, "\\$&")
+            if (!noLowercase) {
+                name = name.toLowerCase(); // This is just to avoid case sensitiveness for query parameter name
+                url = url.toLowerCase(); // This is just to avoid case sensitiveness                
+            }
             const regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
                 results = regex.exec(url);
             if (!results) return null;
@@ -433,7 +436,17 @@
             return position
         }
 
-        init(getParameterByName('config') || 'config-example')
+        try {
+            const inlineConfig = atob(getParameterByName('inlineConfig', 'no_lowercase'))         
+            if (typeof inlineConfig !== "undefined") {
+                log('Injecting inline config :O', 'happy')
+                eval(inlineConfig)
+            }
+        } finally {
+            if (typeof config === 'undefined') {
+                init(getParameterByName('config') || 'config-example')    
+            }
+        }
     </script>
     <style>
         body {
