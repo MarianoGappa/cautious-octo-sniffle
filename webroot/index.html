@@ -437,9 +437,9 @@
         }
 
         try {
-            const inlineConfig = atob(getParameterByName('inlineConfig', 'no_lowercase'))         
-            if (typeof inlineConfig !== "undefined") {
-                log('Injecting inline config :O', 'happy')
+            const inlineConfigParam = getParameterByName('inlineConfig', 'no_lowercase')
+            if (inlineConfigParam !== null) {
+                const inlineConfig = atob(inlineConfigParam)
                 eval(inlineConfig)
             }
         } finally {
