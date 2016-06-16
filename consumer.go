@@ -15,18 +15,8 @@ import (
 func setupConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, []io.Closer, error) {
 	partitionConsumers := []<-chan *sarama.ConsumerMessage{}
 	closeables := []io.Closer{}
-	for _, consumerConfig := range conf.Consumers {
-		topic, brokerString, partition := consumerConfig.Topic, consumerConfig.Broker, consumerConfig.Partition
-
-		if topic == "" {
-			return nil, closeables, fmt.Errorf("Please define topic name for your consumer")
-		}
-
-		if brokerString == "" {
-			brokerString = "localhost:9092"
-		}
-
-		brokers := strings.Split(brokerString, ",")
+	for _, consumerConfig := range conf.consumers {
+		topic, brokers, partition := consumerConfig.topic, consumerConfig.brokers, consumerConfig.partition
 
 		consumer, err := sarama.NewConsumer(brokers, nil)
 		if err != nil {
@@ -44,7 +34,7 @@ func setupConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, []io.Closer
 		}
 
 		for _, partition := range partitions {
-			offset, err := resolveOffset(consumerConfig.Offset, brokers, topic, partition, clientCreator{})
+			offset, err := resolveOffset(consumerConfig.offset, brokers, topic, partition, clientCreator{})
 			if err != nil {
 				return nil, closeables, fmt.Errorf("Could not resolve offset for %v, %v, %v. err=%v", brokers, topic, partition, err)
 			}

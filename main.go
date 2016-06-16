@@ -15,17 +15,6 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-type consumerConfig struct {
-	Broker    string `json:"broker"`
-	Partition int    `json:"partition"`
-	Topic     string `json:"topic"`
-	Offset    string `json:"offset"`
-}
-
-type Config struct {
-	Consumers []consumerConfig `json:"consumers"`
-}
-
 func closeAll(cls []io.Closer) {
 	log.Printf("Closing %v closeables used on this websocket\n", len(cls))
 	for _, cl := range cls {
@@ -42,15 +31,23 @@ func onConnected(q chan struct{}) func(ws *websocket.Conn) {
 	return func(ws *websocket.Conn) {
 		log.Println("Opened WebSocket connection!")
 
-		var config Config
-		err := websocket.JSON.Receive(ws, &config)
+		var configJSON ConfigJSON
+		err := websocket.JSON.Receive(ws, &configJSON)
 		if err != nil {
 			ws.Close()
 			log.Println("Didn't receive config from WebSocket!", err)
 			return
 		}
 
-		pc, closeables, err := setupConsumers(&config)
+		config, err := processConfig(&configJSON)
+		if err != nil {
+			log.Printf("Closing WebSocket connection due to: %v\n", err)
+			ws.Close()
+			return
+		}
+		log.Printf("Loaded config: %v\n", config)
+
+		pc, closeables, err := setupConsumers(config)
 		closeables = append(closeables, ws)
 		if err != nil {
 			log.Printf("Closing WebSocket connection due to: %v\n", err)
