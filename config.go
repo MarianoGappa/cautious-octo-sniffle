@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"strings"
 )
 
@@ -33,7 +32,6 @@ func processConfig(configJSON *ConfigJSON) (*Config, error) {
 	config := &Config{}
 
 	globalBrokers := configJSON.Brokers
-	log.Println(globalBrokers)
 	for _, consumerJSON := range configJSON.Consumers {
 		consumer := consumerConfig{}
 

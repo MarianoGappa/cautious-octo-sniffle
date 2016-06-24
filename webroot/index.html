@@ -73,9 +73,13 @@
         }
 
         const run = (timeout) => {
-            if (typeof config !== 'undefined')
+            if (typeof config !== 'undefined') {
+                if (typeof brokersOverride !== 'undefined') {
+                    config.serverConfig.brokers = brokersOverride
+                    log(`Overriding brokers to [${brokersOverride}]`)
+                }
                 doRun()
-            else if (timeout > 0) {
+            } else if (timeout > 0) {
                 console.log("not ready; retrying...")
                 window.setTimeout(() => run(timeout - 1), 50)
             } else {
@@ -436,6 +440,11 @@
             return position
         }
 
+        let brokersOverride = undefined
+        const brokerOverrideParam = getParameterByName('brokers')
+        if (typeof brokerOverrideParam !== 'undefined') {
+            brokersOverride = brokerOverrideParam
+        }
         try {
             const inlineConfigParam = getParameterByName('inlineConfig', 'no_lowercase')
             if (inlineConfigParam !== null) {
