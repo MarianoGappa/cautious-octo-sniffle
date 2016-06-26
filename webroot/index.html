@@ -74,7 +74,7 @@
 
         const run = (timeout) => {
             if (typeof config !== 'undefined') {
-                if (typeof brokersOverride !== 'undefined') {
+                if (typeof brokersOverride !== 'undefined' && brokersOverride !== null) {
                     config.serverConfig.brokers = brokersOverride
                     log(`Overriding brokers to [${brokersOverride}]`)
                 }
