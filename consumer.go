@@ -48,6 +48,7 @@ func setupConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, []io.Closer
 			closeables = append(closeables, partitionConsumer)
 		}
 		closeables = append(closeables, consumer)
+		log.Printf("Added consumer for topic [%v]", topic)
 	}
 	return partitionConsumers, closeables, nil
 }
