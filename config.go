@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"strconv"
 	"strings"
 )
 
@@ -64,4 +67,19 @@ func processConfig(configJSON *ConfigJSON) (*Config, error) {
 	}
 
 	return config, nil
+}
+
+func mustResolvePort(num int) int {
+	port, err := resolvePort(num)
+	if err != nil {
+		log.Fatalf("Could not resolve port %v. err=%v", num, err)
+	}
+	return port
+}
+
+func resolvePort(num int) (int, error) {
+	if len(os.Args) >= 2 {
+		return strconv.Atoi(os.Args[1])
+	}
+	return num, nil
 }

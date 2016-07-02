@@ -3,6 +3,7 @@ package main
 import (
 	"html/template"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -32,6 +33,14 @@ func serveBaseHTML(template *template.Template, w http.ResponseWriter, r *http.R
 	}
 
 	return template.Execute(w, links)
+}
+
+func mustParseBasePageTemplate() *template.Template {
+	template, err := parseBasePageTemplate()
+	if err != nil {
+		log.Fatalf("Could not parse base page template. err=%v", err)
+	}
+	return template
 }
 
 func parseBasePageTemplate() (*template.Template, error) {
