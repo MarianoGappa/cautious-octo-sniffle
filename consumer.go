@@ -164,7 +164,6 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 					`", "consumedUnixTimestamp": "` + strconv.FormatInt(timeNow.Unix(), 10) +
 					`"}` + "\n"
 
-			log.Println("Sending message to WebSocket: " + msg)
 			err := sender.Send(ws, msg)
 			if err != nil {
 				log.Printf("Error while trying to send to WebSocket: err=%v\n", err)
