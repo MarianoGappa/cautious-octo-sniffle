@@ -1,43 +1,23 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 
 	"golang.org/x/net/websocket"
 
 	"github.com/Shopify/sarama"
+	"github.com/Shopify/sarama/mocks"
 )
 
-type mockClientCreator struct {
-	oldest     int64
-	newest     int64
-	closeError error
-}
+// func (m mockClient) GetOffset(topic string, partition int32, time int64) (int64, error) {
+// 	if time == -1 {
+// 		return m.newest, nil
+// 	} else if time == -2 {
+// 		return m.oldest, nil
+// 	}
 
-type mockClient struct {
-	oldest     int64
-	newest     int64
-	closeError error
-}
-
-func (m mockClientCreator) NewClient(brokers []string) (iClient, error) {
-	return mockClient{oldest: m.oldest, newest: m.newest, closeError: m.closeError}, nil
-}
-
-func (m mockClient) GetOffset(topic string, partition int32, time int64) (int64, error) {
-	if time == -1 {
-		return m.newest, nil
-	} else if time == -2 {
-		return m.oldest, nil
-	}
-
-	return 0, fmt.Errorf("Test error :(")
-}
-
-func (m mockClient) Close() error {
-	return m.closeError
-}
+// 	return 0, fmt.Errorf("Test error :(")
+// }
 
 // func TestResolveOffset(t *testing.T) {
 // 	offset, _ := resolveOffset("newest", []string{"localhost:9092"}, "test", 0, mockClientCreator{})
@@ -128,4 +108,55 @@ func TestSendMessagesToWsBlocking(t *testing.T) {
 	}
 
 	close(q)
+}
+
+type mockUtils struct{}
+
+func (k mockUtils) newClient(brokers []string) (sarama.Client, error) {
+	return mockClient{}, nil
+}
+
+func (k mockUtils) newConsumerFromClient(client sarama.Client) (sarama.Consumer, error) {
+	return &mocks.Consumer{}, nil
+}
+
+type mockClient struct {
+	oldest     int64
+	newest     int64
+	closeError error
+}
+
+func (m mockClient) Config() *sarama.Config                                         { return nil }
+func (m mockClient) Topics() ([]string, error)                                      { return nil, nil }
+func (m mockClient) Partitions(topic string) ([]int32, error)                       { return nil, nil }
+func (m mockClient) WritablePartitions(topic string) ([]int32, error)               { return nil, nil }
+func (m mockClient) Leader(topic string, partitionID int32) (*sarama.Broker, error) { return nil, nil }
+func (m mockClient) Replicas(topic string, partitionID int32) ([]int32, error)      { return nil, nil }
+func (m mockClient) RefreshMetadata(topics ...string) error                         { return nil }
+func (m mockClient) Coordinator(consumerGroup string) (*sarama.Broker, error)       { return nil, nil }
+func (m mockClient) RefreshCoordinator(consumerGroup string) error                  { return nil }
+func (m mockClient) Close() error                                                   { return nil }
+func (m mockClient) Closed() bool                                                   { return false }
+func (m mockClient) GetOffset(topic string, partitionID int32, time int64) (int64, error) {
+	return 0, nil
+}
+
+func TestSetupClusters(t *testing.T) {
+	clusters := make(map[string]*cluster)
+	clusters["one"] = &cluster{brokers: []string{"one"}}
+	clusters["two"] = &cluster{brokers: []string{"two"}}
+
+	if clusters["one"].client != nil || clusters["one"].consumer != nil || clusters["two"].client != nil || clusters["two"].consumer != nil {
+		t.Errorf("precondition for test failed")
+	}
+
+	errors := setupClusters(clusters, mockUtils{})
+
+	if len(errors) > 0 {
+		t.Errorf("setupClusters returned error(s)")
+	}
+
+	if clusters["one"].client == nil || clusters["one"].consumer == nil || clusters["two"].client == nil || clusters["two"].consumer == nil {
+		t.Errorf("clients and consumers were not initialised properly")
+	}
 }

@@ -63,7 +63,22 @@ func closeAll(clusters map[string]*cluster) {
 	log.Printf("Finished trying to close all clusters")
 }
 
-func setupClusters(clusters map[string]*cluster) []error {
+type iKafkaUtils interface {
+	newClient(brokers []string) (sarama.Client, error)
+	newConsumerFromClient(client sarama.Client) (sarama.Consumer, error)
+}
+
+type kafkaUtils struct{}
+
+func (k kafkaUtils) newClient(brokers []string) (sarama.Client, error) {
+	return sarama.NewClient(brokers, nil)
+}
+
+func (k kafkaUtils) newConsumerFromClient(client sarama.Client) (sarama.Consumer, error) {
+	return sarama.NewConsumerFromClient(client)
+}
+
+func setupClusters(clusters map[string]*cluster, utils iKafkaUtils) []error {
 	errors := []error{}
 	var errL sync.Mutex
 
@@ -74,13 +89,13 @@ func setupClusters(clusters map[string]*cluster) []error {
 			return func() {
 				c := clusters[b]
 				log.Printf("Adding client+consumer for cluster with brokers %v", c.brokers)
-				client, err := sarama.NewClient(c.brokers, nil)
+				client, err := utils.newClient(c.brokers)
 				if err != nil {
 					errL.Lock()
 					errors = append(errors, fmt.Errorf("Error creating client. err=%v", err))
 					errL.Unlock()
 				}
-				consumer, err := sarama.NewConsumerFromClient(client)
+				consumer, err := utils.newConsumerFromClient(client)
 				if err != nil {
 					errL.Lock()
 					errors = append(errors, fmt.Errorf("Error creating consumer. err=%v", err))
@@ -105,7 +120,7 @@ func setupPartitionConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, ma
 		}
 	}
 
-	errors := setupClusters(clusters)
+	errors := setupClusters(clusters, kafkaUtils{})
 	var errL sync.Mutex
 	if len(errors) > 0 {
 		log.Printf("%v error(s) while setting up consumers:", len(errors))
