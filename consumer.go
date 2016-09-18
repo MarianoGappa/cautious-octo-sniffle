@@ -150,7 +150,7 @@ func setupPartitionConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, ma
 					partitions, err = consumer.Partitions(topic)
 					if err != nil {
 						errL.Lock()
-						errors = append(errors, fmt.Errorf("Error fetching partitions for topic. err=%v", err))
+						errors = append(errors, fmt.Errorf("Error fetching partitions for topic %v. err=%v", topic, err))
 						errL.Unlock()
 						return
 					}
