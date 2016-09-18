@@ -2,14 +2,16 @@
 <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
 </head>
 <body onload="run(5)">
-    <div id="titleContainer">
-        <div id="title"></div>
-        <nav id="rest"></nav>
-        <div id="clear"></div>
+    <div id="side">
+        <section id="titleContainer">
+            <div id="title"></div>
+            <nav id="rest"></nav>
+            <div id="clear"></div>
+        </section>
+        <section id="log"></section>
     </div>
     <div id="mainContainer">
-        <section id="left"><div id="container"></div></section>
-        <section id="log"></section>
+        <div id="container"></div>
     </div>
     <footer id="footer">0 messages/s (event log empty)</footer>
     <script type="text/javascript">
@@ -101,7 +103,7 @@
 
             if (!config.documentationMode) {
                 openWebSocket()
-                _('#rest').innerHTML = '<button onclick="javascript:replayEventLog()">Replay latest events</button><button onclick="javascript:cleanEventLog()">Clean event log</button>'
+                _('#rest').innerHTML = '<button onclick="javascript:replayEventLog()">Replay</button><button onclick="javascript:cleanEventLog()">Clear</button>'
             } else {
                 _('#rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">Reset</button><button onclick="javascript:mockPoll()">Next</button>'
             }
@@ -475,7 +477,7 @@
             height: 10vh;
             max-height: 70px;
 
-            font-size: 26px;
+            font-size: 20px;
             background-color: #0091EA;
         }
         #title {
@@ -498,6 +500,18 @@
         }
         #mainContainer {
             color: black;
+            min-height: 90vh;
+            max-height: 90vh;
+            display: inline-block;
+            vertical-align: top;
+        }
+        #side {
+            width: 500px;
+            display: inline-block;
+            z-index: 15;
+        }
+        #container {
+            position: absolute;
         }
         .detached {
             position: absolute;
@@ -506,7 +520,6 @@
             width: 50px;
             height: 38px;
         }
-
         .component {
             border-radius: 15px;
             text-align: center;
@@ -518,34 +531,16 @@
         }
         .component_title {
             padding: 10px;
-            text-shadow: 1px 1px 1px gray;
+            text-shadow: 1px 1px 1px #CCC;
             display: block;
             position: absolute;
             top:50%;
         }
-        #left {
-            z-index: -2;
-
-            min-width: 700px;
-            width: 60%;
-            min-height: 90vh;
-            max-height: 90vh;
-
-            overflow: hidden;
-            float: left;
-
-            background-color: transparent;
-            box-shadow: inset -3px 3px 3px 1px rgba(0,0,0,0.3);
-        }
-        #container {
-            position: absolute;
-            max-height: 90vh;
-        }
         #log {
             overflow: scroll;
 
-            min-height: 90vh;
-            max-height: 90vh;
+            min-height: 95vh;
+            max-height: 95vh;
             background-color: #E0E0E0;
         }
         .logline {
@@ -553,8 +548,8 @@
             display: block;
         }
         button {
-            margin-right: 15px;
-            padding: 3px 15px 3px 15px;
+            margin-right: 10px;
+            padding: 3px 10px 3px 10px;
             font-family: 'Open Sans', 'Verdana', 'sans-serif';
             box-shadow:0 2px 5px rgba(0,0,0,0.26);
             background-color: #282c37;
