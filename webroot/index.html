@@ -169,6 +169,7 @@
 
                     processUiEvents(consumedMessagesToEvents(consumedMessages))
                 } else if (!config.hideIgnoredMessages) {
+                    console.log('Ignored incoming message', message)
                     log('Ignored incoming message.', 'debug')
                 }
             }
@@ -244,7 +245,7 @@
                 eventQueue.length = 0
                 refreshDocumentationModeStepCount()
                 log('-- Replay event log mode; ignoring real-time messages --', 'happy')
-                _('#rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">Reset</button><button onclick="javascript:mockPoll()">Next</button><button onclick="javascript:restoreRealTime()">Back to real-time</button>'
+                _('#rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">|&lt;&lt;</button><button onclick="javascript:mockPoll()">&gt;</button><button onclick="javascript:restoreRealTime()">Back</button>'
             } else {
                 log('-- Replay event log is empty --', 'error')
             }
@@ -256,7 +257,7 @@
             eventLog.length = 0
             startRateCalculation()
             log('-- Back to real-time mode --')
-            _('#rest').innerHTML = '<button onclick="javascript:replayEventLog()">Replay latest events</button><button onclick="javascript:cleanEventLog()">Clean event log</button>'
+            _('#rest').innerHTML = '<button onclick="javascript:replayEventLog()">Replay</button><button onclick="javascript:cleanEventLog()">Clear</button>'
         }
 
         const resetDocumentationMode = () => {
@@ -538,7 +539,7 @@
         }
         #log {
             overflow: scroll;
-
+            color: black;
             min-height: 95vh;
             max-height: 95vh;
             background-color: #E0E0E0;
