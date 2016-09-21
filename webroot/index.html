@@ -15,6 +15,38 @@
     </div>
     <footer id="footer">0 messages/s (event log empty)</footer>
     <script type="text/javascript">
+        // http://stackoverflow.com/questions/4810841/how-can-i-pretty-print-json-using-javascript
+        function syntaxHighlight(json) {
+            if (typeof json === 'undefined') {
+                return '';
+            }
+            if (typeof json != 'string') {
+                 json = JSON.stringify(json, undefined, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                var cls = 'number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'key';
+                    } else {
+                        cls = 'string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        const minibox = (id) => {
+            const color = document.getElementById('component_' + id).style.backgroundColor
+            return `<span class="minibox" style="background-color: ${color}">${id}</span>`
+        }
+    </script>
+    <script type="text/javascript">
         let documentationModeIterator = 0
         const eventQueue = []
         const eventLog = []
@@ -30,7 +62,7 @@
             name = name.replace(/[\[\]]/g, "\\$&")
             if (!noLowercase) {
                 name = name.toLowerCase(); // This is just to avoid case sensitiveness for query parameter name
-                url = url.toLowerCase(); // This is just to avoid case sensitiveness                
+                url = url.toLowerCase(); // This is just to avoid case sensitiveness
             }
             const regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
                 results = regex.exec(url);
@@ -49,7 +81,7 @@
             }
         }
 
-        const log = (message, _color) => {
+        const log = (message, _color, from, to, json) => {
             const colors = {
                 'severe':'#E53A40',
                 'error': '#E53A40',
@@ -62,11 +94,15 @@
             }
 
             const color = colors[_color] || colors['default']
+            const header = typeof from !== 'undefined' && typeof to !== 'undefined'
+                ? minibox(from) + ` → ` + minibox(to) + `<br/>` : ''
+
+            const prettyJson = typeof json !== 'undefined' ? '<pre>' + syntaxHighlight(json) + '</pre>' : '';
 
             const element = document.createElement('span')
             element.className = 'logLine'
             element.style.color = color
-            element.innerHTML = message
+            element.innerHTML = header + message + '<br/>' + prettyJson
             _('#log').insertBefore(element, _('#log').firstChild)
 
             if (_('#log').children.length > 1000) {
@@ -116,11 +152,10 @@
                 if (event.eventType == 'message') {
                     animateFromTo(_(`[id='component_${event.sourceId}']`), _(`[id='component_${event.targetId}']`), event.quantity ? event.quantity : 1)
                 }
-
                 if (typeof event.logs !== 'undefined') {
-                    for (l of event.logs) { log(l.text, l.color) }
+                    for (let i in event.logs) { log(event.logs[i].text, event.logs[i].color, event.sourceId, event.targetId, i == 0 ? event.json : undefined) }
                 } else if (event.text) {
-                    log(event.text, event.color)
+                    log(event.text, event.color, event.sourceId, event.targetId, event.json)
                 }
 
                 // Save enqueued animation into event log; keep it <= 100 events
@@ -284,8 +319,12 @@
                     if (newEvents.length == 0 && !config.hideIgnoredMessages) {
                         log(`Ignoring event: ${consumedMessages[i].value}`, 'debug')
                     }
-                    for (let j in newEvents)
+                    for (let j in newEvents) {
+                        try {
+                            newEvents[j].json = JSON.parse(consumedMessages[i].value) // json specific
+                        } finally {}
                         events.push(newEvents[j])
+                    }
                 }
             }
             return events
@@ -456,7 +495,7 @@
             }
         } finally {
             if (typeof config === 'undefined') {
-                init(getParameterByName('config') || 'config-example')    
+                init(getParameterByName('config') || 'config-example')
             }
         }
     </script>
@@ -577,6 +616,27 @@
           font-size: 2rem;
           transform: translate(-50%, -50%);
         }
+
+        .minibox {
+            /*border: 1px solid black;*/
+            border-radius: 3px;
+            text-shadow: 1px 1px 1px #CCC;
+            display: inline-block;
+            padding: 5px;
+            margin: 5px;
+            padding-left: 10px;
+            padding-right: 10px;
+            margin-left: 0px;
+            color: black;
+        }
+
+        /* http://stackoverflow.com/questions/4810841/how-can-i-pretty-print-json-using-javascript */
+        pre {padding: 5px; margin: 5px; font-size: 8px;}
+        .string { color: green; }
+        .number { color: darkorange; }
+        .boolean { color: blue; }
+        .null { color: magenta; }
+        .key { color: red; }
     </style>
 </body>
 </html>
