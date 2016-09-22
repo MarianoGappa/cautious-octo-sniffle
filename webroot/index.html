@@ -41,6 +41,37 @@
             });
         }
 
+        // http://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript-jquery
+        const hash = (s) => {
+            var hash = 0, i, chr, len;
+            if (s.length === 0) return hash;
+            for (i = 0, len = s.length; i < len; i++) {
+                chr   = s.charCodeAt(i);
+                hash  = ((hash << 5) - hash) + chr;
+                hash |= 0; // Convert to 32bit integer
+            }
+            return hash;
+        }
+
+        // http://stackoverflow.com/questions/8482309/converting-javascript-integer-to-byte-array-and-back
+        const longToByteArray = (long) => {
+            // we want to represent the input as a 8-bytes array
+            var byteArray = [0, 0, 0, 0, 0, 0, 0, 0];
+
+            for ( var index = 0; index < byteArray.length; index ++ ) {
+                var byte = long & 0xff;
+                byteArray [ index ] = byte;
+                long = (long - byte) / 256 ;
+            }
+
+            return byteArray;
+        };
+
+        const keyToRGBA = (key) => {
+            const arr = longToByteArray(hash(key))
+            return `rgba(${arr[0]}, ${arr[1]}, ${arr[2]}, 0.6)`
+        }
+
         const minibox = (id) => {
             const color = document.getElementById('component_' + id).style.backgroundColor
             return `<span class="minibox" style="background-color: ${color}">${id}</span>`
@@ -150,7 +181,7 @@
                 const event = eventQueue.shift()
 
                 if (event.eventType == 'message') {
-                    animateFromTo(_(`[id='component_${event.sourceId}']`), _(`[id='component_${event.targetId}']`), event.quantity ? event.quantity : 1)
+                    animateFromTo(_(`[id='component_${event.sourceId}']`), _(`[id='component_${event.targetId}']`), event.quantity ? event.quantity : 1, event.key)
                 }
                 if (typeof event.logs !== 'undefined') {
                     for (let i in event.logs) { log(event.logs[i].text, event.logs[i].color, event.sourceId, event.targetId, i == 0 ? event.json : undefined) }
@@ -323,6 +354,7 @@
                         try {
                             newEvents[j].json = JSON.parse(consumedMessages[i].value) // json specific
                         } finally {}
+                        newEvents[j].key = consumedMessages[i].key
                         events.push(newEvents[j])
                     }
                 }
@@ -378,7 +410,7 @@
             }
         }
 
-        const animateFromTo = (source, target, quantity) => {
+        const animateFromTo = (source, target, quantity, key) => {
             const element = document.createElement('div')
             element.id = guid()
             element.className = 'detached message'
@@ -389,13 +421,18 @@
 
             element.style.zIndex = -1
 
+            var rgb = undefined
+            if (config.colorBasedOnKey && typeof key !== 'undefined' && key !== '') {
+                rgb = keyToRGBA(key)
+            }
+
             if (quantity > 1) {
                 const q = document.createElement('h2')
                 q.innerHTML = quantity
                 element.appendChild(q)
+            }
 
-                const notRed = quantity * 4 >= 200 ? 55 : 255 - quantity
-                const rgb = `rgba(255, ${notRed}, ${notRed}, 0.6)`
+            if (typeof rgb !== 'undefined') {
                 element.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
             } else {
                 element.style.background = 'url(images/message.gif)'

@@ -184,6 +184,12 @@ var config = {
     "webSocketAddress": "localhost:41234",
 
     /*
+        When true, the flying messages will be color-coded based on a hash
+        of the Kafka message's key. Same key => same color.
+    */
+    "colorBasedOnKey": true,
+
+    /*
         Please include all Kafka topic/partition pairs that you need to
         listen to.
         Note that there is an "offset" setting. It should always be set
