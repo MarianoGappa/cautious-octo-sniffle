@@ -82,8 +82,11 @@ button {
     border: 1px solid black;
 }
 footer {
-    clear: both;
-    position: fixed; bottom: 0px; height: 50px; background-color: gray; color: white;
+    position: fixed;
+    bottom: 0px;
+    right: 0px;
+    height: 50px;
+    background-color: gray; color: white;
     line-height: 50px;
     padding-left: 15px;
     padding-right: 15px;
