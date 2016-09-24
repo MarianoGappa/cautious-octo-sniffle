@@ -150,33 +150,6 @@ var config = {
     "hideIgnoredMessages": false,
 
     /*
-        If documentationMode is set to true, no WebSocket connection is
-        established to the server. Instead, the server's incoming events
-        are mocked by the "documentationSteps" array, and they can be
-        triggered by the "Next" button that will appear on the top-right
-        corner of the screen.
-        This mode is a very clear way to document a project that is best
-        explained by a flowchart.
-    */
-    "documentationMode": true,
-    "documentationSteps": [
-        [
-            {"eventType":"message","sourceId":"Person","targetId":"Server","text":"Person initiates a request to submit content to all devices"}
-        ],
-        [
-            {"eventType":"message","sourceId":"Server","targetId":"Phone","text":"Server produces content to cellphone","color":"happy"},
-            {"eventType":"message","sourceId":"Server","targetId":"Tablet","text":"Server produces content to tablet","color":"happy"}
-        ]
-    ],
-
-    /*
-        When enabled, shows the rate at which messages are being consumed.
-        Doesn't work on documentationMode.
-    */
-    "rateCalculationEnabled": true,
-    "rateCalculationIntervalMilliseconds": 1000,
-
-    /*
         Where is the server listening at? ws://[this_is_the_address]/ws
         e.g. localhost:41234
         Flowbro starts on port 41234 by default.
