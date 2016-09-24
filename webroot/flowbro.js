@@ -64,8 +64,6 @@ let documentationModeIterator = 0
 const eventQueue = []
 const eventLog = []
 const state = {}
-let rateCalculationCache = []
-let rateCalculationInterval = null
 
 const _ = a => document.querySelector(a)
 
@@ -148,8 +146,6 @@ const doRun = () => {
 
     window.setInterval(() => showNextUiEvent(), config.eventSeparationIntervalMilliseconds)
 
-    startRateCalculation()
-
     if (!config.documentationMode) {
         openWebSocket()
         _('#rest').innerHTML = '<button onclick="javascript:replayEventLog()">Replay</button><button onclick="javascript:cleanEventLog()">Clear</button>'
@@ -176,6 +172,7 @@ const showNextUiEvent = () => {
             eventLog.push([event])
             if (eventLog.length > 100)
                 eventLog.shift()
+            _('#footer').innerHTML = `${eventLog.length} events logged`
         }
     }
 }
@@ -203,10 +200,6 @@ const openWebSocket = () => {
                 for (i in lines) {
                     try {
                         maybeResult = JSON.parse(lines[i])
-
-                        if (config.rateCalculationEnabled && maybeResult.timestamp) {
-                            rateCalculationCache.push(parseInt(maybeResult.timestamp))
-                        }
 
                         consumedMessages.push(maybeResult)
                     } catch (e) {
@@ -289,7 +282,6 @@ const replayEventLog = () => {
         config.documentationMode = true
         documentationModeIterator = 0
         config.documentationSteps = eventLog
-        stopRateCalculation()
         eventQueue.length = 0
         refreshDocumentationModeStepCount()
         log('-- Replay event log mode; ignoring real-time messages --', 'happy')
@@ -303,7 +295,6 @@ const restoreRealTime = () => {
     documentationModeIterator = 0
     config.documentationMode = false
     eventLog.length = 0
-    startRateCalculation()
     log('-- Back to real-time mode --')
     _('#rest').innerHTML = '<button onclick="javascript:replayEventLog()">Replay</button><button onclick="javascript:cleanEventLog()">Clear</button>'
 }
@@ -441,31 +432,6 @@ const animateFromTo = (source, target, quantity, key) => {
     }
 
     window.setTimeout(removeNodes(element, style), length)
-}
-
-const calculateRate = (rateCalculationCache) => {
-    rateCalculationCache.sort()
-    const first = rateCalculationCache.shift()
-    const last = rateCalculationCache.pop()
-    const size = rateCalculationCache.length
-
-    return size < 2 ? size : parseInt(size / (last - first + 1))
-}
-
-const startRateCalculation = () => {
-    if (config.rateCalculationEnabled && !config.documentationMode) {
-        _('#footer').style.display = 'block';
-
-        rateCalculationInterval = window.setInterval(() => {
-            _('#footer').innerHTML = `${calculateRate(rateCalculationCache)} messages/s (${eventLog.length} events logged)`
-            rateCalculationCache = []
-        }, config.rateCalculationIntervalMilliseconds)
-    }
-}
-const stopRateCalculation = () => {
-    if (rateCalculationInterval !== 'undefined') {
-        window.clearInterval(rateCalculationInterval)
-    }
 }
 
 const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1)
