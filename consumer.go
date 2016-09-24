@@ -15,8 +15,8 @@ import (
 func gowg(f func(), wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func(wg *sync.WaitGroup) {
-		f()
 		defer wg.Done()
+		f()
 	}(wg)
 }
 
