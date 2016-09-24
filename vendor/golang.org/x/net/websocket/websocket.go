@@ -4,7 +4,7 @@
 
 // Package websocket implements a client and server for the WebSocket protocol
 // as specified in RFC 6455.
-package websocket
+package websocket // import "golang.org/x/net/websocket"
 
 import (
 	"bufio"
@@ -209,9 +209,6 @@ func (ws *Conn) Write(msg []byte) (n int, err error) {
 	}
 	n, err = w.Write(msg)
 	w.Close()
-	if err != nil {
-		return n, err
-	}
 	return n, err
 }
 

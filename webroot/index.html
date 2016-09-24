@@ -222,8 +222,8 @@
                             try {
                                 maybeResult = JSON.parse(lines[i])
 
-                                if (config.rateCalculationEnabled && maybeResult.consumedUnixTimestamp) {
-                                    rateCalculationCache.push(parseInt(maybeResult.consumedUnixTimestamp))
+                                if (config.rateCalculationEnabled && maybeResult.timestamp) {
+                                    rateCalculationCache.push(parseInt(maybeResult.timestamp))
                                 }
 
                                 consumedMessages.push(maybeResult)
@@ -343,6 +343,8 @@
         }
 
         const consumedMessagesToEvents = (consumedMessages) => {
+            consumedMessages.sort((a, b) => a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0)
+
             const events = []
             for (let i in consumedMessages) {
                 if (consumedMessages[i]) {

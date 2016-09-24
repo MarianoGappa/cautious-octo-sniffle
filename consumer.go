@@ -224,7 +224,9 @@ type iClientCreator interface {
 type clientCreator struct{}
 
 func (s clientCreator) NewClient(brokers []string) (iClient, error) {
-	return sarama.NewClient(brokers, nil)
+	saramaConfig := sarama.NewConfig()
+	saramaConfig.Version = sarama.V0_10_0_0
+	return sarama.NewClient(brokers, saramaConfig)
 }
 
 func resolveOffset(configOffset string, brokers []string, topic string, partition int32, client sarama.Client) (int64, error) {
@@ -304,7 +306,7 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 					`", "offset": "` + strconv.FormatInt(cMsg.Offset, 10) +
 					`", "key": "` + strings.Replace(string(cMsg.Key), `"`, `\"`, -1) +
 					`", "value": "` + strings.Replace(string(cMsg.Value), `"`, `\"`, -1) +
-					`", "consumedUnixTimestamp": "` + strconv.FormatInt(timeNow.Unix(), 10) +
+					`", "timestamp": "` + strconv.FormatInt(cMsg.Timestamp.UnixNano()/1000000, 10) +
 					`"}` + "\n"
 
 			err := sender.Send(ws, msg)
