@@ -71,8 +71,12 @@ b {
     top:50%;
 }
 .logline {
-    padding: 10px 15px 5px 15px;
+    padding: 15px;
+    margin: 8px;
     display: block;
+    border: 1px solid #CFCFCF;
+    border-radius: 3px;
+    background-color: #D9D9D9;
 }
 button {
     margin-right: 10px;
