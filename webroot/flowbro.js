@@ -323,7 +323,7 @@ const consumedMessagesToEvents = (consumedMessages) => {
         if (consumedMessages[i]) {
             const newEvents = config.logic(consumedMessages[i], log, state)
             if (newEvents.length == 0 && !config.hideIgnoredMessages) {
-                log(`Ignoring event: ${consumedMessages[i].value}`, 'debug')
+                log(`Ignoring event:<br/><pre>` + syntaxHighlight(JSON.parse(consumedMessages[i].value)) + '</pre>', 'debug')
             }
             for (let j in newEvents) {
                 try {

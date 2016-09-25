@@ -119,7 +119,7 @@ h2 {
 }
 
 /* http://stackoverflow.com/questions/4810841/how-can-i-pretty-print-json-using-javascript */
-pre {padding: 5px; margin: 5px; font-size: 8px;}
+pre {padding: 5px; margin: 5px; font-size: 10px;}
 .string { color: green; }
 .number { color: darkorange; }
 .boolean { color: blue; }
