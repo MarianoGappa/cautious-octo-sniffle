@@ -56,6 +56,8 @@ b {
     text-align: center;
     position: absolute;
     overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.26);
+    text-transform: uppercase;
 }
 .component img, .message img {
     max-width:100%;

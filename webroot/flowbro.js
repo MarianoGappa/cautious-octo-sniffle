@@ -379,8 +379,6 @@ const loadComponents = (config) => {
             element.style.backgroundColor = component.backgroundColor ? component.backgroundColor : colorRing.next().value
             title.style.marginTop = "-" + (parseInt(title.offsetHeight) / 2) + "px"
             title.style.width = parseInt(element.style.width) - 20 - 2 // 20 = padding
-            element.style.boxShadow = "0 2px 5px rgba(0,0,0,0.26)"
-            element.style.textTransform = "uppercase"
         }
     }
 }
