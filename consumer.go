@@ -297,26 +297,84 @@ func (t timeNow) Unix() int64 {
 }
 
 func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow) {
+	var tick <-chan time.Time
+	var ticker *time.Ticker
+
+	currentTimestamp := int64(0)
+	buffer := []*sarama.ConsumerMessage{}
+	initialTimerCh := time.After(5 * time.Second)
+
 	for {
 		select {
 		case cMsg := <-c:
-			msg :=
-				`{"topic": "` + cMsg.Topic +
-					`", "partition": "` + strconv.FormatInt(int64(cMsg.Partition), 10) +
-					`", "offset": "` + strconv.FormatInt(cMsg.Offset, 10) +
-					`", "key": "` + strings.Replace(string(cMsg.Key), `"`, `\"`, -1) +
-					`", "value": "` + strings.Replace(string(cMsg.Value), `"`, `\"`, -1) +
-					`", "timestamp": "` + strconv.FormatInt(cMsg.Timestamp.UnixNano()/1000000, 10) +
-					`"}` + "\n"
-
-			err := sender.Send(ws, msg)
-			if err != nil {
-				log.Printf("Error while trying to send to WebSocket: err=%v\n", err)
-				return
+			if cMsg.Timestamp.UnixNano() <= 0 {
+				cMsg.Timestamp = time.Now()
 			}
+			for i := range buffer {
+				target := len(buffer) - 1 - i
+				if cMsg.Timestamp.UnixNano() >= buffer[target].Timestamp.UnixNano() {
+					buffer = sliceInsert(buffer, target+1, cMsg)
+					break
+				}
+			}
+			if len(buffer) == 0 {
+				buffer = append(buffer, cMsg)
+			}
+		case <-initialTimerCh:
+			initialTimerCh = nil
+			if len(buffer) == 0 {
+				currentTimestamp = time.Now().UnixNano() / 1000000
+			} else {
+				currentTimestamp = buffer[0].Timestamp.UnixNano() / 1000000
+			}
+			log.Printf("Starting at timestamp %v", currentTimestamp)
+			ticker = time.NewTicker(time.Millisecond * 100)
+			tick = ticker.C
+		case <-tick:
+			for len(buffer) > 0 {
+				if buffer[0].Timestamp.UnixNano()/1000000 <= currentTimestamp {
+					cMsg := buffer[0]
+					msg :=
+						`{"topic": "` + cMsg.Topic +
+							`", "partition": "` + strconv.FormatInt(int64(cMsg.Partition), 10) +
+							`", "offset": "` + strconv.FormatInt(cMsg.Offset, 10) +
+							`", "key": "` + strings.Replace(string(cMsg.Key), `"`, `\"`, -1) +
+							`", "value": "` + strings.Replace(string(cMsg.Value), `"`, `\"`, -1) +
+							`", "timestamp": "` + strconv.FormatInt(cMsg.Timestamp.UnixNano()/1000000, 10) +
+							`"}` + "\n"
+
+					err := sender.Send(ws, msg)
+					if err != nil {
+						log.Printf("Error while trying to send to WebSocket: err=%v\n", err)
+						return
+					}
+
+					buffer = buffer[1:]
+				} else {
+					break
+				}
+			}
+			currentTimestamp += 100
 		case <-q:
 			log.Println("Received quit signal")
 			return
 		}
 	}
+}
+
+func sliceInsert(slice []*sarama.ConsumerMessage, index int, value *sarama.ConsumerMessage) []*sarama.ConsumerMessage {
+	if index == 0 {
+		return append([]*sarama.ConsumerMessage{value}, slice...)
+	}
+	if index >= len(slice) {
+		return append(slice, value)
+	}
+	// Grow the slice by one element.
+	slice = slice[0 : len(slice)+1]
+	// Use copy to move the upper part of the slice out of the way and open a hole.
+	copy(slice[index+1:], slice[index:])
+	// Store the new value.
+	slice[index] = value
+	// Return the result.
+	return slice
 }
