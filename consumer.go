@@ -331,29 +331,30 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 			ticker = time.NewTicker(time.Millisecond * 100)
 			tick = ticker.C
 		case <-tick:
-			for len(buffer) > 0 {
+			msg := ""
+			for i := 0; len(buffer) > 0 && i < 1000; i++ {
 				if buffer[0].Timestamp.UnixNano()/1000000 <= currentTimestamp {
 					cMsg := buffer[0]
-					msg :=
+					msg = msg +
 						`{"topic": "` + cMsg.Topic +
-							`", "partition": "` + strconv.FormatInt(int64(cMsg.Partition), 10) +
-							`", "offset": "` + strconv.FormatInt(cMsg.Offset, 10) +
-							`", "key": "` + strings.Replace(string(cMsg.Key), `"`, `\"`, -1) +
-							`", "value": "` + strings.Replace(string(cMsg.Value), `"`, `\"`, -1) +
-							`", "timestamp": "` + strconv.FormatInt(cMsg.Timestamp.UnixNano()/1000000, 10) +
-							`"}` + "\n"
-
-					err := sender.Send(ws, msg)
-					if err != nil {
-						log.Printf("Error while trying to send to WebSocket: err=%v\n", err)
-						return
-					}
+						`", "partition": "` + strconv.FormatInt(int64(cMsg.Partition), 10) +
+						`", "offset": "` + strconv.FormatInt(cMsg.Offset, 10) +
+						`", "key": "` + strings.Replace(string(cMsg.Key), `"`, `\"`, -1) +
+						`", "value": "` + strings.Replace(string(cMsg.Value), `"`, `\"`, -1) +
+						`", "timestamp": "` + strconv.FormatInt(cMsg.Timestamp.UnixNano()/1000000, 10) +
+						`"}` + "\n"
 
 					buffer = buffer[1:]
 				} else {
 					break
 				}
 			}
+			err := sender.Send(ws, msg)
+			if err != nil {
+				log.Printf("Error while trying to send to WebSocket: err=%v\n", err)
+				return
+			}
+
 			currentTimestamp += 100
 		case <-q:
 			log.Println("Received quit signal")
