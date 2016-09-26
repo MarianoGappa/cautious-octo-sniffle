@@ -159,7 +159,12 @@ const showNextUiEvent = () => {
         const event = eventQueue.shift()
 
         if (event.eventType == 'message') {
-            animateFromTo(_(`[id='component_${event.sourceId}']`), _(`[id='component_${event.targetId}']`), event.quantity ? event.quantity : 1, event.key)
+            animateFromTo(
+                _(`[id='component_${event.sourceId}']`),
+                _(`[id='component_${event.targetId}']`),
+                event.quantity ? event.quantity : 1,
+                event.key
+            )
         }
         if (typeof event.logs !== 'undefined') {
             for (let i in event.logs) { log(event.logs[i].text, event.logs[i].color, event.sourceId, event.targetId, i == 0 ? event.json : undefined) }
@@ -329,7 +334,7 @@ const consumedMessagesToEvents = (consumedMessages) => {
                 try {
                     newEvents[j].json = JSON.parse(consumedMessages[i].value) // json specific
                 } finally {}
-                newEvents[j].key = consumedMessages[i].key
+                newEvents[j].key = typeof newEvents[j].key !== 'undefined' ? newEvents[j].key : consumedMessages[i].key
                 events.push(newEvents[j])
             }
         }
