@@ -2,4 +2,5 @@
 !webroot/configs/config-example.js
 flowbro*
 !webroot/flowbro.js
+!webroot/util.js
 .vscode
