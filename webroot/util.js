@@ -55,9 +55,9 @@ const keyToRGBA = (key) => {
     return `rgba(${arr[0]}, ${arr[1]}, ${arr[2]}, 0.6)`
 }
 
-const minibox = (id) => {
+const minibox = (id, label) => {
     const color = document.getElementById(id).style.backgroundColor
-    return `<span class="minibox" style="background-color: ${color}">${id}</span>`
+    return `<span class="minibox" style="background-color: ${color}">${label}</span>`
 }
 
 const _ = a => document.querySelector(a)
