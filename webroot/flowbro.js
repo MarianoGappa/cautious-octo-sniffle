@@ -25,9 +25,12 @@ const log = (message, _color, from, to, json) => {
         'default': 'inherit'
     }
 
+    const fromId = safeId('component_' + from)
+    const toId = safeId('component_' + to)
+
     const color = colors[_color] || colors['default']
     const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined'
-    const header = isFlyingMessage ? minibox('component_' + from, from) + ` → ` + minibox('component_' + to, to) + `<br/>` : ''
+    const header = isFlyingMessage ? minibox(fromId, from) + ` → ` + minibox(toId, to) + `<br/>` : ''
 
     const prettyJson = typeof json !== 'undefined' ? '<pre>' + syntaxHighlight(json) + '</pre>' : '';
 
@@ -80,9 +83,11 @@ const showNextUiEvent = () => {
         const event = eventQueue.shift()
 
         if (event.eventType == 'message') {
+            const safeSourceId = safeId(event.sourceId)
+            const safeTargetId = safeId(event.targetId)
             animateFromTo(
-                _(`[id='component_${event.sourceId}']`),
-                _(`[id='component_${event.targetId}']`),
+                _(`[id='component_${safeSourceId}']`),
+                _(`[id='component_${safeTargetId}']`),
                 event.quantity ? event.quantity : 1,
                 event.key
             )
@@ -267,9 +272,10 @@ const loadComponents = (config) => {
     let colorRing = colorGenerator(config.colourPalette)
     for (let i in config.components) {
         const component = config.components[i]
+        const safeComponentId = safeId(component.id)
 
         let element = document.createElement('div')
-        element.id = `component_${component.id}`
+        element.id = `component_${safeComponentId}`
         element.className = 'detached component'
 
         _('#container').appendChild(element)

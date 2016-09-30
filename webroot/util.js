@@ -62,6 +62,8 @@ const minibox = (id, label) => {
 
 const _ = a => document.querySelector(a)
 
+const safeId = (id) => id.replace(/[^a-zA-Z0-9-_]/g, '_')
+
 // http://stackoverflow.com/questions/901115/how-can-i-get-query-string-values-in-javascript
 const getParameterByName = (name, noLowercase) => {
     url = window.location.href;
