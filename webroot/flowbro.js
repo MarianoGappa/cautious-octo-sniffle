@@ -26,8 +26,8 @@ const log = (message, _color, from, to, json) => {
     }
 
     const color = colors[_color] || colors['default']
-    const header = typeof from !== 'undefined' && typeof to !== 'undefined'
-        ? minibox('component_' + from) + ` → ` + 'component_' + minibox(to) + `<br/>` : ''
+    const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined'
+    const header = isFlyingMessage ? minibox('component_' + from) + ` → ` + minibox('component_' + to) + `<br/>` : ''
 
     const prettyJson = typeof json !== 'undefined' ? '<pre>' + syntaxHighlight(json) + '</pre>' : '';
 
