@@ -79,32 +79,37 @@ const doRun = () => {
 }
 
 const showNextUiEvent = () => {
-    if (eventQueue.length > 0) {
-        const event = eventQueue.shift()
+    if (eventQueue.length == 0) {
+        return
+    }
 
-        if (event.eventType == 'message') {
-            const safeSourceId = safeId(event.sourceId)
-            const safeTargetId = safeId(event.targetId)
-            animateFromTo(
-                _(`[id='component_${safeSourceId}']`),
-                _(`[id='component_${safeTargetId}']`),
-                event.quantity ? event.quantity : 1,
-                event.key
-            )
-        }
-        if (typeof event.logs !== 'undefined') {
-            for (let i in event.logs) { log(event.logs[i].text, event.logs[i].color, event.sourceId, event.targetId, i == 0 ? event.json : undefined) }
-        } else if (event.text) {
-            log(event.text, event.color, event.sourceId, event.targetId, event.json)
-        }
+    const event = eventQueue.shift()
 
-        // Save enqueued animation into event log; keep it <= 100 events
-        if (!config.documentationMode) {
-            eventLog.push([event])
-            if (eventLog.length > 100)
-                eventLog.shift()
-            _('#footer').innerHTML = `${eventLog.length} events logged`
+    if (event.eventType == 'message') {
+        const safeSourceId = safeId(event.sourceId)
+        const safeTargetId = safeId(event.targetId)
+
+        animateFromTo(
+            _(`[id='component_${safeSourceId}']`),
+            _(`[id='component_${safeTargetId}']`),
+            event.quantity ? event.quantity : 1,
+            event.key
+        )
+    }
+    if (typeof event.logs !== 'undefined') {
+        for (let i in event.logs) {
+            log(event.logs[i].text, event.logs[i].color, event.sourceId, event.targetId, i == 0 ? event.json : undefined)
         }
+    } else if (event.text) {
+        log(event.text, event.color, event.sourceId, event.targetId, event.json)
+    }
+
+    // Save enqueued animation into event log; keep it <= 100 events
+    if (!config.documentationMode) {
+        eventLog.push([event])
+        if (eventLog.length > 100)
+            eventLog.shift()
+        _('#footer').innerHTML = `${eventLog.length} events logged`
     }
 }
 
@@ -276,7 +281,7 @@ const loadComponents = (config) => {
 
         let element = document.createElement('div')
         element.id = `component_${safeComponentId}`
-        element.className = 'detached component'
+        element.className = 'component'
 
         _('#container').appendChild(element)
 
@@ -304,6 +309,16 @@ const loadComponents = (config) => {
             title.style.marginTop = "-" + (parseInt(title.offsetHeight) / 2) + "px"
             title.style.width = parseInt(element.style.width) - 20 - 2 // 20 = padding
         }
+
+        // Moon holder
+        let moonHolder = document.createElement('div')
+        moonHolder.id = `${element.id}_moon_holder`
+        moonHolder.className = 'moon-holder'
+
+        _('#container').appendChild(moonHolder)
+        moonHolder.style.left = parseInt(element.style.left)
+        moonHolder.style.width = parseInt(element.style.width) - 5
+        moonHolder.style.top = parseInt(element.style.top) + parseInt(element.style.height)
     }
 }
 
@@ -348,12 +363,30 @@ const animateFromTo = (source, target, quantity, key) => {
 
     element.className = `${styleId} detached message`
 
-    const removeNodes = (element, style) => () => {
+    const postAnimation = (element, style, target, rgb) => () => {
         element.parentNode.removeChild(element)
         style.parentNode.removeChild(style)
+        if (rgb) {
+            addMoon(target, rgb)
+        }
     }
 
-    window.setTimeout(removeNodes(element, style), length)
+    window.setTimeout(postAnimation(element, style, target, rgb), length)
+}
+
+const addMoon = (target, rgb) => {
+    const moonId = target.id + "_" + rgb.replace(/\(|\)|,| |\./g, "_")
+    const moonHolderId = target.id + "_moon_holder"
+
+    if (_(moonId)) {
+        return
+    }
+
+    const moon = document.createElement('div')
+    moon.id = guid()
+    moon.className = 'moon'
+    moon.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
+    _('#' + moonHolderId).appendChild(moon)
 }
 
 const componentPosition = (components, i) => {

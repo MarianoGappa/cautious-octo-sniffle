@@ -59,6 +59,20 @@ b {
     box-shadow: 0 2px 5px rgba(0,0,0,0.26);
     text-transform: uppercase;
 }
+.moon-holder {
+    position: absolute;
+    overflow: hidden;
+    width: 50px;
+    height: 25px;
+    padding: 5px;
+}
+.moon {
+    display: inline-block;
+    width: 20px;
+    height: 15px;
+    background-size: 20px 15px !important;
+    margin-right: 3px;
+}
 .component img, .message img {
     max-width:100%;
     max-height:100%;
