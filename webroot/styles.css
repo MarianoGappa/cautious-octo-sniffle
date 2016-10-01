@@ -70,7 +70,7 @@ b {
     display: inline-block;
     width: 20px;
     height: 15px;
-    background-size: 20px 15px !important;
+    background-size: 20px 15px !important; /* gradient must be defined on instantiation :( */
     margin-right: 3px;
 }
 .component img, .message img {
