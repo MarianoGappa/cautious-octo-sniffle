@@ -91,3 +91,4 @@ function* colorGenerator(colors) {
 const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1)
 const guid = () => s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4()
 const cleanArray = (actual) => actual.filter((elem) => Boolean(elem))
+const textLimit = (s, l) => (l < 3 || s.length <= l) ? s : s.substring(0,l-3) + "..."

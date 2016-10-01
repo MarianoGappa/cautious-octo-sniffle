@@ -61,8 +61,6 @@ b {
 }
 .moon-holder {
     position: absolute;
-    overflow: hidden;
-    width: 50px;
     height: 25px;
     padding: 5px;
 }
@@ -72,6 +70,19 @@ b {
     height: 15px;
     background-size: 20px 15px !important; /* gradient must be defined on instantiation :( */
     margin-right: 3px;
+}
+.moon:hover .tooltip {
+    display: inline;
+}
+.tooltip {
+    display: none;
+    height: 15px;
+    line-height: 15px;
+    margin-top: 20px;
+    border: 1px dotted black;
+    background-color: black;
+    padding: 3px;
+    position: absolute;
 }
 .component img, .message img {
     max-width:100%;

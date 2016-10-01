@@ -165,7 +165,10 @@ const processUiEvents = (events) => { for (event of events) {
 const aggregateEventOnEventQueue = (event) => {
     const indexOfSimilarMessage = (event, eventQueue) => {
         let index = undefined
-        eventQueue.forEach((v, i) => { if (v.sourceId == event.sourceId && v.targetId == event.targetId) index = i })
+        eventQueue.forEach((v, i) => {
+            if (v.sourceId == event.sourceId && v.targetId == event.targetId && v.key == event.key)
+                index = i
+        })
         return index
     }
 
@@ -317,7 +320,7 @@ const loadComponents = (config) => {
 
         _('#container').appendChild(moonHolder)
         moonHolder.style.left = parseInt(element.style.left)
-        moonHolder.style.width = parseInt(element.style.width) - 5
+        moonHolder.style.width = 300
         moonHolder.style.top = parseInt(element.style.top) + parseInt(element.style.height)
     }
 }
@@ -363,30 +366,42 @@ const animateFromTo = (source, target, quantity, key) => {
 
     element.className = `${styleId} detached message`
 
-    const postAnimation = (element, style, target, rgb) => () => {
+    const postAnimation = (element, style, target, rgb, key) => () => {
         element.parentNode.removeChild(element)
         style.parentNode.removeChild(style)
         if (rgb) {
-            addMoon(target, rgb)
+            addMoon(target, rgb, key)
         }
     }
 
-    window.setTimeout(postAnimation(element, style, target, rgb), length)
+    window.setTimeout(postAnimation(element, style, target, rgb, key), length)
 }
 
-const addMoon = (target, rgb) => {
-    const moonId = target.id + "_" + rgb.replace(/\(|\)|,| |\./g, "_")
+const addMoon = (target, rgb, key) => {
+    const moonId = target.id + "_" + key
     const moonHolderId = target.id + "_moon_holder"
 
-    if (_(moonId)) {
+    if (_('#' + moonId)) {
         return
     }
 
+    // Create moon
     const moon = document.createElement('div')
-    moon.id = guid()
+    moon.id = moonId
     moon.className = 'moon'
     moon.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
     _('#' + moonHolderId).appendChild(moon)
+
+    // Create tooltip
+    const tooltip = document.createElement('span')
+    tooltip.className = 'tooltip'
+    tooltip.innerHTML = textLimit(key, 20)
+    _('#' + moonId).appendChild(tooltip)
+
+    // Limit to 4 moons
+    if (_('#' + moonHolderId).children.length > 4) {
+        _('#' + moonHolderId).removeChild(_('#' + moonHolderId).children[0])
+    }
 }
 
 const componentPosition = (components, i) => {
