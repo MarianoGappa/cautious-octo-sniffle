@@ -57,7 +57,8 @@ const keyToRGBA = (key) => {
 
 const minibox = (id, label) => {
     const color = document.getElementById(id).style.backgroundColor
-    return `<span class="minibox" style="background-color: ${color}">${label}</span>`
+    const safeLabel = textLimit(label, 20)
+    return `<span class="minibox" style="background-color: ${color}">${safeLabel}</span>`
 }
 
 const _ = a => document.querySelector(a)

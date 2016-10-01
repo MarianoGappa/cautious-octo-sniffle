@@ -65,7 +65,7 @@ const run = (timeout) => {
 }
 
 const doRun = () => {
-    _('#title').innerHTML = config.title
+    _('#title').innerHTML = textLimit(config.title, 25)
     loadComponents(config)
 
     window.setInterval(() => showNextUiEvent(), config.eventSeparationIntervalMilliseconds)
