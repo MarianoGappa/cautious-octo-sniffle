@@ -109,19 +109,36 @@ b {
     top:50%;
 }
 .logline, #filter-content {
-    padding: 15px;
-    margin: 8px;
+    margin: 10px;
     margin-bottom: 0px;
     display: block;
-    border: 1px solid #CFCFCF;
+    border: 1px solid #C0C0C0;
     border-radius: 3px;
     background-color: #D9D9D9;
 }
-
+.log-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 15px;
+    background-color: #CCC;
+}
+.log-header span, #filter-content span {
+    margin-right: 15px;
+}
+.log-content {
+    padding: 15px;
+}
 #filter-content {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-start;
     background-color: #D0D0D0;
     border: 1px solid #C0C0C0;
+    padding: 15px;
 }
+
 
 button {
     margin-right: 10px;
@@ -170,6 +187,10 @@ h2 {
 }
 .filtering-id, .filtering-key {
     margin-right: 10px;
+}
+.key-wrapper .filtering-key {
+    margin-right: 0px;
+    margin-bottom: 0px;
 }
 
 /* http://stackoverflow.com/questions/4810841/how-can-i-pretty-print-json-using-javascript */

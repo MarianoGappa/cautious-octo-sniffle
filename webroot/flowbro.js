@@ -33,7 +33,7 @@ const log = (message, _color, from, to, json, key) => {
     const color = colors[_color] || colors['default']
     const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined'
     const keyWrapper = '<span class="key-wrapper"></span>'
-    const header = isFlyingMessage ? keyWrapper + minibox(fromId, from) + ` → ` + minibox(toId, to) + `<br/>` : ''
+    const header = isFlyingMessage ? `<div class='log-header'>` + keyWrapper + minibox(fromId, from) + `<span> → </span>` + minibox(toId, to) + `</div>` : ''
 
     const prettyJson = typeof json !== 'undefined' ? '<pre>' + syntaxHighlight(json) + '</pre>' : '';
 
@@ -41,7 +41,7 @@ const log = (message, _color, from, to, json, key) => {
     element.id = 'log_' + guid()
     element.className = 'logline'
     element.style.color = color
-    element.innerHTML = header + message + '<br/>' + prettyJson
+    element.innerHTML = header + `<div class='log-content'>` + message + '<br/>' + prettyJson + '</div>'
     element.dataset.key = key
     element.dataset.from = fromId
     element.dataset.to = toId
