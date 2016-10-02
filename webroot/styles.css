@@ -186,7 +186,9 @@ h2 {
     margin-bottom: 0px;
 }
 .filtering-id, .filtering-key {
+    margin: 0px;
     margin-right: 10px;
+    margin-bottom: 0px;
 }
 .key-wrapper .filtering-key {
     margin-right: 0px;

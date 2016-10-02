@@ -85,7 +85,7 @@ const updateFilters = () => {
 
         // init filter section
         while (_('#filter-content').firstChild) { _('#filter-content').removeChild(_('#filter-content').firstChild) }
-        _('#filter-content').innerHTML = "<span>Showing only:&nbsp;&nbsp;&nbsp;<span>";
+        _('#filter-content').innerHTML = "<span>Showing only:<span>";
         if (filterKey) addFilteringKey(filterKey, _('#filter-content'), true)
         filterIds.forEach((i) => { addFilteringID(i, _('#filter-content'), true) })
         _('#filter').style.display = 'block'
