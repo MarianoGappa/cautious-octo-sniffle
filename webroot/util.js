@@ -62,6 +62,7 @@ const minibox = (id, label) => {
 }
 
 const _ = a => document.querySelector(a)
+const __ = a => document.querySelectorAll(a)
 
 const safeId = (id) => id.replace(/[^a-zA-Z0-9-_]/g, '_')
 

@@ -2,6 +2,8 @@ let documentationModeIterator = 0
 const eventQueue = []
 const eventLog = []
 const state = {}
+var filterKey = undefined
+var filterIds = []
 
 const init = (configFile) => {
     if (!_(`init_script_${configFile}`)) {
@@ -13,7 +15,7 @@ const init = (configFile) => {
     }
 }
 
-const log = (message, _color, from, to, json) => {
+const log = (message, _color, from, to, json, key) => {
     const colors = {
         'severe':'#E53A40',
         'error': '#E53A40',
@@ -30,18 +32,113 @@ const log = (message, _color, from, to, json) => {
 
     const color = colors[_color] || colors['default']
     const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined'
-    const header = isFlyingMessage ? minibox(fromId, from) + ` → ` + minibox(toId, to) + `<br/>` : ''
+    const keyWrapper = '<span class="key-wrapper"></span>'
+    const header = isFlyingMessage ? keyWrapper + minibox(fromId, from) + ` → ` + minibox(toId, to) + `<br/>` : ''
 
     const prettyJson = typeof json !== 'undefined' ? '<pre>' + syntaxHighlight(json) + '</pre>' : '';
 
     const element = document.createElement('span')
-    element.className = 'logLine'
+    element.id = 'log_' + guid()
+    element.className = 'logline'
     element.style.color = color
     element.innerHTML = header + message + '<br/>' + prettyJson
+    element.dataset.key = key
+    element.dataset.from = fromId
+    element.dataset.to = toId
+
+    if (!isFlyingMessage) {
+        element.dataset.always = 'true'
+    }
+
     _('#log').insertBefore(element, _('#log').firstChild)
 
-    if (_('#log').children.length > 1000) {
+    if (isFlyingMessage && typeof key !== 'undefined') {
+        addFilteringKey(key, _('#' + element.id + ' .key-wrapper'), false)
+    }
+
+    // hide if being filtered out
+    if (isFlyingMessage) {
+        if ((filterKey && filterKey != key) || (filterIds.length && filterIds.indexOf(fromId) == -1 && filterIds.indexOf(toId) == -1)) {
+            element.style.display = 'none'
+        }
+    }
+
+    while (_('#log').children.length > 1000) {
         _('#log').removeChild(_('#log').lastElementChild)
+    }
+}
+
+const updateFilters = () => {
+    if (filterKey || filterIds.length) {
+        __('.logline:not([data-always])').forEach((e) => e.style.display = 'none')
+        __('.moon').forEach((e) => e.style.display = 'none')
+
+        const fKeySel = filterKey ? `[data-key='${filterKey}']` : ''
+        const fIdsSel = filterIds.length
+            ?
+                filterIds.map((i) => `.logline[data-from='${i}']${fKeySel}, .logline[data-to='${i}']${fKeySel}`).join(', ')
+            :
+                `.logline${fKeySel}`
+
+        __(fIdsSel).forEach((e) => e.style.display = 'block')
+        __(`.moon${fKeySel}`).forEach((e) => e.style.display = 'inline-block')
+
+        // init filter section
+        while (_('#filter-content').firstChild) { _('#filter-content').removeChild(_('#filter-content').firstChild) }
+        _('#filter-content').innerHTML = "<span>Showing only:&nbsp;&nbsp;&nbsp;<span>";
+        if (filterKey) addFilteringKey(filterKey, _('#filter-content'), true)
+        filterIds.forEach((i) => { addFilteringID(i, _('#filter-content'), true) })
+        _('#filter').style.display = 'block'
+
+        return
+    }
+
+    _('#filter').style.display = 'none'
+    __('.logline').forEach((e) => e.style.display = 'block')
+    __('.moon').forEach((e) => e.style.display = 'inline-block')
+}
+
+const addFilteringKey = (key, parent, addListener) => {
+    const rgb = keyToRGBA(key)
+
+    const filteringKey = document.createElement('span')
+    filteringKey.className = 'filtering-key'
+    filteringKey.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
+    parent.appendChild(filteringKey)
+
+    // filtering listener
+    if (addListener) {
+        filteringKey.onclick = function () {
+            filterKey = undefined
+            parent.removeChild(this)
+            updateFilters()
+        }
+    }
+
+    // Create tooltip
+    const tooltip = document.createElement('span')
+    tooltip.className = 'tooltip'
+    tooltip.innerHTML = textLimit(key, 20)
+    filteringKey.appendChild(tooltip)
+}
+
+const addFilteringID = (id, parent, addListener) => {
+    const color = _('#' + id).style.backgroundColor
+    const safeLabel = textLimit(_('#' + id + " span").innerHTML, 20)
+
+    const filteringID = document.createElement('span')
+    filteringID.className = 'filtering-id'
+    filteringID.style.background = color
+    filteringID.innerHTML = safeLabel
+    parent.appendChild(filteringID)
+
+    // filtering listener
+    if (addListener) {
+        filteringID.onclick = function () {
+            filterIds.splice(filterIds.indexOf(id), 1)
+            parent.removeChild(this)
+            updateFilters()
+        }
     }
 }
 
@@ -98,10 +195,10 @@ const showNextUiEvent = () => {
     }
     if (typeof event.logs !== 'undefined') {
         for (let i in event.logs) {
-            log(event.logs[i].text, event.logs[i].color, event.sourceId, event.targetId, i == 0 ? event.json : undefined)
+            log(event.logs[i].text, event.logs[i].color, event.sourceId, event.targetId, i == 0 ? event.json : undefined, event.key)
         }
     } else if (event.text) {
-        log(event.text, event.color, event.sourceId, event.targetId, event.json)
+        log(event.text, event.color, event.sourceId, event.targetId, event.json, event.key)
     }
 
     // Save enqueued animation into event log; keep it <= 100 events
@@ -285,6 +382,7 @@ const loadComponents = (config) => {
         let element = document.createElement('div')
         element.id = `component_${safeComponentId}`
         element.className = 'component'
+        element.dataset.clicked = -1
 
         _('#container').appendChild(element)
 
@@ -313,6 +411,17 @@ const loadComponents = (config) => {
             title.style.width = parseInt(element.style.width) - 20 - 2 // 20 = padding
         }
 
+        // filtering handler
+        element.onclick = function () {
+            element.dataset.clicked = element.dataset.clicked  * -1
+            if (element.dataset.clicked == 1 && filterIds.indexOf(element.id) == -1) {
+                filterIds.push(element.id)
+            } else {
+                filterIds.splice(filterIds.indexOf(element.id), 1);
+            }
+            updateFilters()
+        }
+
         // Moon holder
         let moonHolder = document.createElement('div')
         moonHolder.id = `${element.id}_moon_holder`
@@ -327,7 +436,7 @@ const loadComponents = (config) => {
 
 const animateFromTo = (source, target, quantity, key) => {
     const element = document.createElement('div')
-    element.id = guid()
+    element.id = 'anim_' + guid()
     element.className = 'detached message'
 
     _('#container').appendChild(element)
@@ -370,6 +479,7 @@ const animateFromTo = (source, target, quantity, key) => {
         element.parentNode.removeChild(element)
         style.parentNode.removeChild(style)
         if (rgb) {
+            addMoon(source, rgb, key)
             addMoon(target, rgb, key)
         }
     }
@@ -390,7 +500,27 @@ const addMoon = (target, rgb, key) => {
     moon.id = moonId
     moon.className = 'moon'
     moon.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
+    moon.dataset.key = key
+    moon.dataset.to = target.id
+    moon.dataset.clicked = -1
+
+    // Hide moon if currently filtered out
+    if (filterKey && filterKey != key) {
+        moon.style.display = 'none'
+    }
+
     _('#' + moonHolderId).appendChild(moon)
+
+    // filtering listener
+    moon.onclick = function () {
+        moon.dataset.clicked = moon.dataset.clicked  * -1
+        if (moon.dataset.clicked == 1 && filterKey != key) {
+            filterKey = key
+        } else {
+            filterKey = undefined
+        }
+        updateFilters()
+    };
 
     // Create tooltip
     const tooltip = document.createElement('span')
@@ -399,9 +529,9 @@ const addMoon = (target, rgb, key) => {
     _('#' + moonId).appendChild(tooltip)
 
     // Limit to 4 moons
-    if (_('#' + moonHolderId).children.length > 4) {
-        _('#' + moonHolderId).removeChild(_('#' + moonHolderId).children[0])
-    }
+    // if (_('#' + moonHolderId).children.length > 4) {
+    //     _('#' + moonHolderId).removeChild(_('#' + moonHolderId).children[0])
+    // }
 }
 
 const componentPosition = (components, i) => {

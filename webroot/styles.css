@@ -59,19 +59,31 @@ b {
     box-shadow: 0 2px 5px rgba(0,0,0,0.26);
     text-transform: uppercase;
 }
+.component:hover, .moon:hover, .filtering-key:hover, .filtering-id:hover {
+    cursor: hand;
+}
+.component:active {
+    transition: all .1s linear;
+    opacity: 0.8;
+}
 .moon-holder {
     position: absolute;
     height: 25px;
     padding: 5px;
 }
-.moon {
+.moon, .filtering-key {
     display: inline-block;
     width: 20px;
     height: 15px;
     background-size: 20px 15px !important; /* gradient must be defined on instantiation :( */
     margin-right: 3px;
+    margin-bottom: 3px;
 }
-.moon:hover .tooltip {
+.moon:active, .filtering-key:active {
+    transition: all .1s linear;
+    opacity: 0.8;
+}
+.moon:hover .tooltip, .filtering-key:hover .tooltip {
     display: inline;
 }
 .tooltip {
@@ -83,6 +95,7 @@ b {
     background-color: black;
     padding: 3px;
     position: absolute;
+    color: white;
 }
 .component img, .message img {
     max-width:100%;
@@ -95,14 +108,21 @@ b {
     position: absolute;
     top:50%;
 }
-.logline {
+.logline, #filter-content {
     padding: 15px;
     margin: 8px;
+    margin-bottom: 0px;
     display: block;
     border: 1px solid #CFCFCF;
     border-radius: 3px;
     background-color: #D9D9D9;
 }
+
+#filter-content {
+    background-color: #D0D0D0;
+    border: 1px solid #C0C0C0;
+}
+
 button {
     margin-right: 10px;
     padding: 3px 10px 3px 10px;
@@ -133,7 +153,7 @@ h2 {
   font-size: 2rem;
   transform: translate(-50%, -50%);
 }
-.minibox {
+.minibox, .filtering-id {
     border-radius: 3px;
     text-shadow: 1px 1px 5px #000;
     display: inline-block;
@@ -141,6 +161,15 @@ h2 {
     margin: 5px;
     margin-left: 0px;
     color: white;
+}
+#filter {
+    display: none;
+    background-color: #E0E0E0;
+    color: black;
+    margin-bottom: 0px;
+}
+.filtering-id, .filtering-key {
+    margin-right: 10px;
 }
 
 /* http://stackoverflow.com/questions/4810841/how-can-i-pretty-print-json-using-javascript */
