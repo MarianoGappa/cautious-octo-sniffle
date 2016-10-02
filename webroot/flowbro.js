@@ -169,9 +169,9 @@ const doRun = () => {
 
     if (!config.documentationMode) {
         openWebSocket()
-        _('#rest').innerHTML = '<button onclick="javascript:replayEventLog()">Replay</button><button onclick="javascript:cleanEventLog()">Clear</button>'
+        // _('#rest').innerHTML = '<button onclick="javascript:replayEventLog()">Replay</button><button onclick="javascript:cleanEventLog()">Clear</button>'
     } else {
-        _('#rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">Reset</button><button onclick="javascript:mockPoll()">Next</button>'
+        // _('#rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">Reset</button><button onclick="javascript:mockPoll()">Next</button>'
     }
 }
 
