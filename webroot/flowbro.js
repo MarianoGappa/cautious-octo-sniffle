@@ -144,9 +144,14 @@ const addFilteringID = (id, parent, addListener) => {
 
 const run = (timeout) => {
     if (typeof config !== 'undefined') {
-        if (typeof brokersOverride !== 'undefined' && brokersOverride !== null) {
+        if (brokersOverride) {
             config.serverConfig.brokers = brokersOverride
             log(`Overriding brokers to [${brokersOverride}]`)
+        }
+        if (grep) {
+            config.serverConfig.grep = grep
+            config.serverConfig.offset = String(offset)
+            log(`Grepping messages for [${grep}], with an offset of [${offset}]`)
         }
         doRun()
     } else if (timeout > 0) {
@@ -565,11 +570,30 @@ const componentPosition = (components, i) => {
     return position
 }
 
+// Brokers query param
 let brokersOverride = undefined
 const brokerOverrideParam = getParameterByName('brokers')
-if (typeof brokerOverrideParam !== 'undefined') {
+if (brokerOverrideParam) {
     brokersOverride = brokerOverrideParam
 }
+
+// Offset query param
+let offset = undefined
+const offsetParam = getParameterByName('offset')
+if (offsetParam) {
+    offset = offsetParam
+}
+
+// Grep query param
+let grep = undefined
+const grepParam = getParameterByName('grep')
+if (grepParam) {
+    grep = grepParam
+    if (!offsetParam) {
+        offset = -1000
+    }
+}
+
 try {
     const inlineConfigParam = getParameterByName('inlineConfig', 'no_lowercase')
     if (inlineConfigParam !== null) {

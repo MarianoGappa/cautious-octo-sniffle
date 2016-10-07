@@ -18,6 +18,8 @@ type consumerConfigJson struct {
 type ConfigJSON struct {
 	Brokers   string               `json:"brokers,omitempty"`
 	Consumers []consumerConfigJson `json:"consumers"`
+	Grep      string               `json:"grep"`
+	Offset    string               `json:"offset"`
 }
 
 type consumerConfig struct {
@@ -35,6 +37,7 @@ func processConfig(configJSON *ConfigJSON) (*Config, error) {
 	config := &Config{}
 
 	globalBrokers := configJSON.Brokers
+	globalOffset := configJSON.Offset
 	for _, consumerJSON := range configJSON.Consumers {
 		consumer := consumerConfig{}
 
@@ -53,7 +56,11 @@ func processConfig(configJSON *ConfigJSON) (*Config, error) {
 		}
 
 		if len(consumerJSON.Offset) == 0 {
-			consumer.offset = "newest"
+			if len(globalOffset) > 0 {
+				consumer.offset = globalOffset
+			} else {
+				consumer.offset = "newest"
+			}
 		} else {
 			consumer.offset = consumerJSON.Offset
 		}

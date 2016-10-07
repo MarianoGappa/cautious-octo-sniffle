@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -296,7 +297,7 @@ func (t timeNow) Unix() int64 {
 	return time.Now().Unix()
 }
 
-func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow) {
+func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow, grep string) {
 	var tick <-chan time.Time
 	var ticker *time.Ticker
 
@@ -307,6 +308,14 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 	for {
 		select {
 		case cMsg := <-c:
+			if len(grep) > 0 {
+				matches, err := regexp.Match(grep, cMsg.Value)
+				if err != nil {
+					log.Printf("Error grepping value with pattern [%v]. err=%v\n", grep, err)
+				} else if !matches {
+					break
+				}
+			}
 			if cMsg.Timestamp.UnixNano() <= 0 {
 				cMsg.Timestamp = time.Now()
 			}
