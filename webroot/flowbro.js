@@ -5,6 +5,8 @@ const state = {}
 var filterKey = undefined
 var filterIds = []
 
+var keyAliases = {} // https://github.com/MarianoGappa/flowbro/issues/21
+
 const init = (configFile) => {
     if (!_(`init_script_${configFile}`)) {
         const element = document.createElement('script')
@@ -370,13 +372,35 @@ const consumedMessagesToEvents = (consumedMessages) => {
                 try {
                     newEvents[j].json = JSON.parse(consumedMessages[i].value) // json specific
                 } finally {}
-                newEvents[j].key = typeof newEvents[j].key !== 'undefined' ? newEvents[j].key : consumedMessages[i].key
+
+                // https://github.com/MarianoGappa/flowbro/issues/21
+                updateAliases(newEvents[j], keyAliases)
+                key = newEvents[j].key ? newEvents[j].key : consumedMessages[i].key
+                newEvents[j].key = resolveKeyAliases(key, keyAliases)
+
                 events.push(newEvents[j])
             }
         }
     }
     return events
 }
+
+// https://github.com/MarianoGappa/flowbro/issues/21
+const updateAliases = (event, keyAliases) => {
+    if (event.keyAlias && event.key) {
+        key = event.key
+        if (keyAliases[key]) {
+            key = keyAliases[key]
+        }
+
+        keyAliases[event.keyAlias] = key
+    }
+}
+// https://github.com/MarianoGappa/flowbro/issues/21
+const resolveKeyAliases = (key, keyAliases) => {
+    return key && keyAliases[key] ? keyAliases[key] : key
+}
+
 
 const loadComponents = (config) => {
     let colorRing = colorGenerator(config.colourPalette)
