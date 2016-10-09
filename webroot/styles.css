@@ -194,6 +194,27 @@ h2 {
     margin-right: 0px;
     margin-bottom: 0px;
 }
+#component-info {
+    display: inline-block;
+    margin-right: 20px;
+}
+#component-info a {
+    color: white;
+    padding: 5px;
+    background-color: #666;
+    border: 1px solid #222;
+    border-radius: 3px;
+    text-decoration: none;
+    margin-right: 5px;
+}
+#component-info a:hover {
+    background-color: #444;
+}
+#component-info .minibox {
+    display: inline;
+    height: 20px;
+    margin: 5px;
+}
 
 /* http://stackoverflow.com/questions/4810841/how-can-i-pretty-print-json-using-javascript */
 pre {padding: 5px; margin: 5px; font-size: 10px;}

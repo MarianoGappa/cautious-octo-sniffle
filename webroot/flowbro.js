@@ -213,7 +213,7 @@ const showNextUiEvent = () => {
         eventLog.push([event])
         if (eventLog.length > 100)
             eventLog.shift()
-        _('#footer').innerHTML = `${eventLog.length} events logged`
+        _('#event-log').innerHTML = `${eventLog.length} events logged`
     }
 }
 
@@ -354,8 +354,8 @@ const mockPoll = () => {
     processUiEvents(newEvents)
 }
 const refreshDocumentationModeStepCount = () => {
-    _('#footer').style.display = 'block';
-    _('#footer').innerHTML = `${documentationModeIterator}/${config.documentationSteps.length} events`
+    _('#event-log').style.display = 'block';
+    _('#event-log').innerHTML = `${documentationModeIterator}/${config.documentationSteps.length} events`
 }
 
 const consumedMessagesToEvents = (consumedMessages) => {
@@ -448,6 +448,10 @@ const loadComponents = (config) => {
             } else {
                 filterIds.splice(filterIds.indexOf(element.id), 1);
             }
+
+            //https://github.com/MarianoGappa/flowbro/issues/20
+            _('#component-info').innerHTML = component.info ? minibox(element.id, component.id) + "<span> → </span>" + component.info : ''
+
             updateFilters()
         }
 
