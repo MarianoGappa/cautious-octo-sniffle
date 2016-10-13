@@ -15,11 +15,36 @@ type consumerConfigJson struct {
 	Offset    string `json:"offset,omitempty"`
 }
 
-type ConfigJSON struct {
+type kafka struct {
 	Brokers   string               `json:"brokers,omitempty"`
 	Consumers []consumerConfigJson `json:"consumers"`
 	Grep      string               `json:"grep"`
 	Offset    string               `json:"offset"`
+}
+
+type event struct {
+	EventType string                 `json:"eventType"`
+	SourceId  string                 `json:"sourceId"`
+	TargetId  string                 `json:"targetId"`
+	Text      string                 `json:"text"`
+	Key       string                 `json:"key"`
+	KeyAlias  string                 `json:"keyAlias"`
+	JSON      map[string]interface{} `json:"json"`
+}
+
+type pattern struct {
+	Field   string
+	Pattern string
+}
+
+type rule struct {
+	Patterns []pattern
+	Events   []event
+}
+
+type configJSON struct {
+	Rules []rule
+	Kafka kafka
 }
 
 type consumerConfig struct {
@@ -29,16 +54,16 @@ type consumerConfig struct {
 	offset    string
 }
 
-type Config struct {
+type config struct {
 	consumers []consumerConfig `json:"consumers"`
 }
 
-func processConfig(configJSON *ConfigJSON) (*Config, error) {
-	config := &Config{}
+func processConfig(configJSON *configJSON) (*config, error) {
+	config := &config{}
 
-	globalBrokers := configJSON.Brokers
-	globalOffset := configJSON.Offset
-	for _, consumerJSON := range configJSON.Consumers {
+	globalBrokers := configJSON.Kafka.Brokers
+	globalOffset := configJSON.Kafka.Offset
+	for _, consumerJSON := range configJSON.Kafka.Consumers {
 		consumer := consumerConfig{}
 
 		if len(consumerJSON.Topic) == 0 {

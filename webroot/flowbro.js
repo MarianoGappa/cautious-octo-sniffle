@@ -5,15 +5,16 @@ const state = {}
 var filterKey = undefined
 var filterIds = []
 
-var keyAliases = {} // https://github.com/MarianoGappa/flowbro/issues/21
-
 const init = (configFile) => {
     if (!_(`init_script_${configFile}`)) {
-        const element = document.createElement('script')
-        element.setAttribute('id', `init_script_${configFile}`)
-        element.setAttribute('src', `configs/${configFile}.js`)
-        element.setAttribute('async', false)
-        document.head.appendChild(element)
+        var xhr = new XMLHttpRequest()
+        xhr.onreadystatechange = function(){
+          if(xhr.status == 200 && xhr.readyState == 4){
+            config = JSON.parse(xhr.responseText)
+          }
+        }
+        xhr.open("GET",`configs/${configFile}.js`,true)
+        xhr.send()
     }
 }
 
@@ -224,7 +225,7 @@ const openWebSocket = () => {
     ws.onopen = (event) => {
         log(`WebSocket open on [${wsUrl}]!`, 'happy')
         try {
-            ws.send(JSON.stringify(config.serverConfig))
+            ws.send(JSON.stringify(config))
             log("Sent configurations to server successfully!", 'happy')
         } catch(e) {
             log("Server is drunk :( can't send him configurations!", 'error')
@@ -234,23 +235,13 @@ const openWebSocket = () => {
 
     ws.onmessage = (message) => {
         if (!config.documentationMode) {
-            consumedMessages = []
-            if (message.data.trim()) {
-                lines = cleanArray(message.data.trim().split(/\n/))
-                for (i in lines) {
-                    try {
-                        maybeResult = JSON.parse(lines[i])
-
-                        consumedMessages.push(maybeResult)
-                    } catch (e) {
-                        console.log(`Couldn't parse this as JSON: ${lines[i]}`, "\nError: ", e)
-                    }
-                }
+            try{
+                processUiEvents(JSON.parse(message.data))
+            } catch (e) {
+                console.log(`Couldn't parse this as JSON: ${lines[i]}`, "\nError: ", e)
             }
-
-            processUiEvents(consumedMessagesToEvents(consumedMessages))
         } else if (!config.hideIgnoredMessages) {
-            console.log('Ignored incoming message', message)
+            console.log('Ignored incoming message', message.data)
             log('Ignored incoming message.', 'debug')
         }
     }
@@ -357,50 +348,6 @@ const refreshDocumentationModeStepCount = () => {
     _('#event-log').style.display = 'block';
     _('#event-log').innerHTML = `${documentationModeIterator}/${config.documentationSteps.length} events`
 }
-
-const consumedMessagesToEvents = (consumedMessages) => {
-    consumedMessages.sort((a, b) => a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0)
-
-    const events = []
-    for (let i in consumedMessages) {
-        if (consumedMessages[i]) {
-            const newEvents = config.logic(consumedMessages[i], log, state)
-            if (newEvents.length == 0 && !config.hideIgnoredMessages) {
-                log(`Ignoring event:<br/><pre>` + syntaxHighlight(JSON.parse(consumedMessages[i].value)) + '</pre>', 'debug')
-            }
-            for (let j in newEvents) {
-                try {
-                    newEvents[j].json = JSON.parse(consumedMessages[i].value) // json specific
-                } finally {}
-
-                // https://github.com/MarianoGappa/flowbro/issues/21
-                updateAliases(newEvents[j], keyAliases)
-                key = newEvents[j].key ? newEvents[j].key : consumedMessages[i].key
-                newEvents[j].key = resolveKeyAliases(key, keyAliases)
-
-                events.push(newEvents[j])
-            }
-        }
-    }
-    return events
-}
-
-// https://github.com/MarianoGappa/flowbro/issues/21
-const updateAliases = (event, keyAliases) => {
-    if (event.keyAlias && event.key) {
-        key = event.key
-        if (keyAliases[key]) {
-            key = keyAliases[key]
-        }
-
-        keyAliases[event.keyAlias] = key
-    }
-}
-// https://github.com/MarianoGappa/flowbro/issues/21
-const resolveKeyAliases = (key, keyAliases) => {
-    return key && keyAliases[key] ? keyAliases[key] : key
-}
-
 
 const loadComponents = (config) => {
     let colorRing = colorGenerator(config.colourPalette)

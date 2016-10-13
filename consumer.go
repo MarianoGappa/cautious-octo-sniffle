@@ -3,11 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"encoding/json"
 
 	"github.com/Shopify/sarama"
 	"golang.org/x/net/websocket"
@@ -19,6 +20,15 @@ func gowg(f func(), wg *sync.WaitGroup) {
 		defer wg.Done()
 		f()
 	}(wg)
+}
+
+type message struct {
+	Key       string                 `json:"key"`
+	Value     map[string]interface{} `json:"value"`
+	Topic     string                 `json:"topic"`
+	Partition int32                  `json:"partition"`
+	Offset    int64                  `json:"offset"`
+	Timestamp time.Time              `json:"timestamp"` // only set if kafka is version 0.10+
 }
 
 type cluster struct {
@@ -112,7 +122,7 @@ func setupClusters(clusters map[string]*cluster, utils iKafkaUtils) []error {
 	return errors
 }
 
-func setupPartitionConsumers(conf *Config) ([]<-chan *sarama.ConsumerMessage, map[string]*cluster, bool) {
+func setupPartitionConsumers(conf *config) ([]<-chan *sarama.ConsumerMessage, map[string]*cluster, bool) {
 	clusters := make(map[string]*cluster)
 	for _, c := range conf.consumers {
 		b := strings.Join(c.brokers, ",")
@@ -297,37 +307,43 @@ func (t timeNow) Unix() int64 {
 	return time.Now().Unix()
 }
 
-func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow, grep string) {
+func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow, rules []rule) {
 	var tick <-chan time.Time
 	var ticker *time.Ticker
 
 	currentTimestamp := int64(0)
-	buffer := []*sarama.ConsumerMessage{}
+	buffer := []message{}
+	keyAliases := map[string]string{}
 	initialTimerCh := time.After(5 * time.Second)
 
 	for {
 		select {
 		case cMsg := <-c:
-			if len(grep) > 0 {
-				matches, err := regexp.Match(grep, cMsg.Value)
-				if err != nil {
-					log.Printf("Error grepping value with pattern [%v]. err=%v\n", grep, err)
-				} else if !matches {
-					break
-				}
+			m, err := newMessage(*cMsg)
+			if err != nil {
+				log.Printf("Could not parse %v into message", err)
 			}
-			if cMsg.Timestamp.UnixNano() <= 0 {
-				cMsg.Timestamp = time.Now()
+
+			//if len(grep) > 0 {
+			//	matches, err := regexp.Match(grep, m.Value)
+			//	if err != nil {
+			//		log.Printf("Error grepping value with pattern [%v]. err=%v\n", grep, err)
+			//	} else if !matches {
+			//		break
+			//	}
+			//}
+			if m.Timestamp.UnixNano() <= 0 {
+				m.Timestamp = time.Now()
 			}
 			for i := range buffer {
 				target := len(buffer) - 1 - i
-				if cMsg.Timestamp.UnixNano() >= buffer[target].Timestamp.UnixNano() {
-					buffer = sliceInsert(buffer, target+1, cMsg)
+				if m.Timestamp.UnixNano() >= buffer[target].Timestamp.UnixNano() {
+					buffer = sliceInsert(buffer, target+1, m)
 					break
 				}
 			}
 			if len(buffer) == 0 {
-				buffer = append(buffer, cMsg)
+				buffer = append(buffer, m)
 			}
 		case <-initialTimerCh:
 			initialTimerCh = nil
@@ -340,25 +356,32 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 			ticker = time.NewTicker(time.Millisecond * 100)
 			tick = ticker.C
 		case <-tick:
-			msg := ""
+			events := []event{}
 			for i := 0; len(buffer) > 0 && i < 1000; i++ {
 				if buffer[0].Timestamp.UnixNano()/1000000 <= currentTimestamp {
-					cMsg := buffer[0]
-					msg = msg +
-						`{"topic": "` + cMsg.Topic +
-						`", "partition": "` + strconv.FormatInt(int64(cMsg.Partition), 10) +
-						`", "offset": "` + strconv.FormatInt(cMsg.Offset, 10) +
-						`", "key": "` + strings.Replace(string(cMsg.Key), `"`, `\"`, -1) +
-						`", "value": "` + strings.Replace(string(cMsg.Value), `"`, `\"`, -1) +
-						`", "timestamp": "` + strconv.FormatInt(cMsg.Timestamp.UnixNano()/1000000, 10) +
-						`"}` + "\n"
-
+					evs, err := processMessage(buffer[0], rules, keyAliases)
+					if err != nil {
+						log.Printf("Error while processing message: err=%v", err)
+						break
+					}
+					events = append(events, evs...)
 					buffer = buffer[1:]
 				} else {
 					break
 				}
 			}
-			err := sender.Send(ws, msg)
+
+			if len(events) == 0 {
+				break
+			}
+
+			byt, err := json.Marshal(events)
+			if err != nil {
+				log.Printf("Error while marshalling events: err=%v\n", err)
+				continue
+			}
+
+			err = sender.Send(ws, string(byt))
 			if err != nil {
 				log.Printf("Error while trying to send to WebSocket: err=%v\n", err)
 				return
@@ -372,9 +395,25 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 	}
 }
 
-func sliceInsert(slice []*sarama.ConsumerMessage, index int, value *sarama.ConsumerMessage) []*sarama.ConsumerMessage {
+func newMessage(cm sarama.ConsumerMessage) (message, error) {
+	var v interface{}
+	if err := json.Unmarshal(cm.Value, &v); err != nil {
+		return message{}, err
+	}
+
+	return message{
+		Key:       string(cm.Key),
+		Value:     v.(map[string]interface{}),
+		Topic:     cm.Topic,
+		Partition: cm.Partition,
+		Offset:    cm.Offset,
+		Timestamp: cm.Timestamp,
+	}, nil
+}
+
+func sliceInsert(slice []message, index int, value message) []message {
 	if index == 0 {
-		return append([]*sarama.ConsumerMessage{value}, slice...)
+		return append([]message{value}, slice...)
 	}
 	if index >= len(slice) {
 		return append(slice, value)
