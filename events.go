@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"log"
 	"regexp"
 	"text/template"
 )
 
-func processMessage(m message, rules []rule, keyAliases map[string]string) ([]event, error) {
+func processMessage(m message, rules []rule, keyAliases map[string]string, globalKey string) ([]event, error) {
+	log.Printf("uuid = %v, offset = %v\n", m.Value["campaignUUID"], m.Offset)
 	events := []event{}
 	for _, r := range rules {
 		pass := true
@@ -22,55 +24,59 @@ func processMessage(m message, rules []rule, keyAliases map[string]string) ([]ev
 			}
 
 			if !matched {
-
 				pass = false
 				break
 			}
 		}
-		if pass {
-			for _, e := range r.Events {
-				bEventType, err := parseTempl(e.EventType, m)
-				if err != nil {
-					return events, err
-				}
-				bKey, err := parseTempl(e.Key, m)
-				if err != nil {
-					return events, err
-				}
-				bKeyAlias, err := parseTempl(e.KeyAlias, m)
-				if err != nil {
-					return events, err
-				}
-				bSourceId, err := parseTempl(e.SourceId, m)
-				if err != nil {
-					return events, err
-				}
-				bTargetId, err := parseTempl(e.TargetId, m)
-				if err != nil {
-					return events, err
-				}
-				bText, err := parseTempl(e.Text, m)
-				if err != nil {
-					return events, err
-				}
-
-				key := string(bKey)
-				if ka, ok := keyAliases[key]; len(ka) > 0 && ok {
-					key = ka
-				}
-				if len(bKeyAlias) > 0 && len(bKey) > 0 {
-					keyAliases[string(bKeyAlias)] = key
-				}
-
-				events = append(events, event{
-					EventType: string(bEventType),
-					Key:       key,
-					SourceId:  string(bSourceId),
-					TargetId:  string(bTargetId),
-					Text:      string(bText),
-					JSON:      m.Value,
-				})
+		if !pass {
+			continue
+		}
+		for _, e := range r.Events {
+			bEventType, err := parseTempl(e.EventType, m)
+			if err != nil {
+				return events, err
 			}
+			bKey, err := parseTempl(e.Key, m)
+			if err != nil {
+				return events, err
+			}
+			bKeyAlias, err := parseTempl(e.KeyAlias, m)
+			if err != nil {
+				return events, err
+			}
+			bSourceId, err := parseTempl(e.SourceId, m)
+			if err != nil {
+				return events, err
+			}
+			bTargetId, err := parseTempl(e.TargetId, m)
+			if err != nil {
+				return events, err
+			}
+			bText, err := parseTempl(e.Text, m)
+			if err != nil {
+				return events, err
+			}
+
+			key := string(bKey)
+			if ka, ok := keyAliases[key]; len(ka) > 0 && ok {
+				key = ka
+			}
+			if len(bKeyAlias) > 0 && len(bKey) > 0 {
+				keyAliases[string(bKeyAlias)] = key
+			}
+
+			if len(globalKey) > 0 && globalKey != key {
+				continue
+			}
+
+			events = append(events, event{
+				EventType: string(bEventType),
+				Key:       key,
+				SourceId:  string(bSourceId),
+				TargetId:  string(bTargetId),
+				Text:      string(bText),
+				JSON:      m.Value,
+			})
 		}
 	}
 	return events, nil

@@ -307,7 +307,7 @@ func (t timeNow) Unix() int64 {
 	return time.Now().Unix()
 }
 
-func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow, rules []rule) {
+func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow, rules []rule, globalKey string) {
 	var tick <-chan time.Time
 	var ticker *time.Ticker
 
@@ -323,15 +323,6 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 			if err != nil {
 				log.Printf("Could not parse %v into message", err)
 			}
-
-			//if len(grep) > 0 {
-			//	matches, err := regexp.Match(grep, m.Value)
-			//	if err != nil {
-			//		log.Printf("Error grepping value with pattern [%v]. err=%v\n", grep, err)
-			//	} else if !matches {
-			//		break
-			//	}
-			//}
 			if m.Timestamp.UnixNano() <= 0 {
 				m.Timestamp = time.Now()
 			}
@@ -359,7 +350,7 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 			events := []event{}
 			for i := 0; len(buffer) > 0 && i < 1000; i++ {
 				if buffer[0].Timestamp.UnixNano()/1000000 <= currentTimestamp {
-					evs, err := processMessage(buffer[0], rules, keyAliases)
+					evs, err := processMessage(buffer[0], rules, keyAliases, globalKey)
 					if err != nil {
 						log.Printf("Error while processing message: err=%v", err)
 						break

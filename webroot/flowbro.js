@@ -146,15 +146,15 @@ const addFilteringID = (id, parent, addListener) => {
 }
 
 const run = (timeout) => {
-    if (typeof config !== 'undefined') {
+    if (config) {
         if (brokersOverride) {
-            config.serverConfig.brokers = brokersOverride
+            config.kafka.brokers = brokersOverride
             log(`Overriding brokers to [${brokersOverride}]`)
         }
-        if (grep) {
-            config.serverConfig.grep = grep
-            config.serverConfig.offset = String(offset)
-            log(`Grepping messages for [${grep}], with an offset of [${offset}]`)
+        if (key) {
+            config.key = key
+            config.kafka.offset = String(offset)
+            log(`Grepping messages for [${key}], with an offset of [${offset}]`)
         }
         doRun()
     } else if (timeout > 0) {
@@ -559,11 +559,11 @@ if (offsetParam) {
     offset = offsetParam
 }
 
-// Grep query param
-let grep = undefined
-const grepParam = getParameterByName('grep')
-if (grepParam) {
-    grep = grepParam
+// Key query param
+let key = undefined
+const keyParam = getParameterByName('key')
+if (keyParam) {
+    key = keyParam
     if (!offsetParam) {
         offset = -1000
     }

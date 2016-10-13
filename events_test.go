@@ -15,6 +15,7 @@ func TestProcessMessage(t *testing.T) {
 		m              message
 		rs             []rule
 		ka             map[string]string
+		globalKey      string
 		expectedEvents []event
 		expectedKa     map[string]string
 		fails          bool
@@ -208,10 +209,56 @@ func TestProcessMessage(t *testing.T) {
 			expectedKa:     map[string]string{"777": "666"},
 			fails:          false,
 		},
+		{
+			name: "ignores message when global key doesn't match",
+			m: message{
+				Key:       "123",
+				Value:     newValueFrom("{}"),
+				Topic:     "topic",
+				Partition: 0,
+				Offset:    213,
+				Timestamp: now,
+			},
+			rs: []rule{
+				{
+					Patterns: []pattern{{Field: "{{.Topic}}", Pattern: "topic"}},
+					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123"}},
+				},
+			},
+			globalKey:      "456",
+			ka:             map[string]string{},
+			expectedEvents: []event{},
+			expectedKa:     map[string]string{},
+			fails:          false,
+		},
+		{
+			name: "doesn't ignore message when global key matches",
+			m: message{
+				Key:       "123",
+				Value:     newValueFrom("{}"),
+				Topic:     "topic",
+				Partition: 0,
+				Offset:    213,
+				Timestamp: now,
+			},
+			rs: []rule{
+				{
+					Patterns: []pattern{{Field: "{{.Topic}}", Pattern: "topic"}},
+					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123"}},
+				},
+			},
+			globalKey: "123",
+			ka:        map[string]string{},
+			expectedEvents: []event{
+				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123", JSON: map[string]interface{}{}},
+			},
+			expectedKa: map[string]string{},
+			fails:      false,
+		},
 	}
 
 	for _, ts := range tests {
-		actualEvents, err := processMessage(ts.m, ts.rs, ts.ka)
+		actualEvents, err := processMessage(ts.m, ts.rs, ts.ka, ts.globalKey)
 		if ts.fails && err == nil {
 			t.Errorf("'%v' should have failed", ts.name)
 			t.FailNow()

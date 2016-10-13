@@ -45,6 +45,7 @@ type rule struct {
 type configJSON struct {
 	Rules []rule
 	Kafka kafka
+	Key   string
 }
 
 type consumerConfig struct {
