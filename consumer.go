@@ -307,13 +307,13 @@ func (t timeNow) Unix() int64 {
 	return time.Now().Unix()
 }
 
-func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow, rules []rule, globalKey string) {
+func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow, rules []rule, globalFSMId string) {
 	var tick <-chan time.Time
 	var ticker *time.Ticker
 
 	currentTimestamp := int64(0)
 	buffer := []message{}
-	keyAliases := map[string]string{}
+	fsmIdAliases := map[string]string{}
 	initialTimerCh := time.After(5 * time.Second)
 
 	for {
@@ -350,7 +350,7 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 			events := []event{}
 			for i := 0; len(buffer) > 0 && i < 1000; i++ {
 				if buffer[0].Timestamp.UnixNano()/1000000 <= currentTimestamp {
-					evs, err := processMessage(buffer[0], rules, keyAliases, globalKey)
+					evs, err := processMessage(buffer[0], rules, fsmIdAliases, globalFSMId)
 					if err != nil {
 						log.Printf("Error while processing message: err=%v", err)
 						break

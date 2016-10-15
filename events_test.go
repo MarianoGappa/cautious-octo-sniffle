@@ -14,8 +14,8 @@ func TestProcessMessage(t *testing.T) {
 		name           string
 		m              message
 		rs             []rule
-		ka             map[string]string
-		globalKey      string
+		fa             map[string]string
+		globalFSMId    string
 		expectedEvents []event
 		expectedKa     map[string]string
 		fails          bool
@@ -24,7 +24,7 @@ func TestProcessMessage(t *testing.T) {
 			name:           "empty case",
 			m:              message{},
 			rs:             []rule{},
-			ka:             map[string]string{},
+			fa:             map[string]string{},
 			expectedEvents: []event{},
 			expectedKa:     map[string]string{},
 			fails:          false,
@@ -42,12 +42,12 @@ func TestProcessMessage(t *testing.T) {
 			rs: []rule{
 				{
 					Patterns: []pattern{{Field: "{{.Topic}}", Pattern: "topic"}},
-					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123"}},
+					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456"}},
 				},
 			},
-			ka: map[string]string{},
+			fa: map[string]string{},
 			expectedEvents: []event{
-				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123", JSON: map[string]interface{}{}},
+				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", Key: "123", JSON: map[string]interface{}{}},
 			},
 			expectedKa: map[string]string{},
 			fails:      false,
@@ -66,15 +66,15 @@ func TestProcessMessage(t *testing.T) {
 				{
 					Patterns: []pattern{{Field: "{{.Topic}}", Pattern: "topic"}},
 					Events: []event{
-						{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi, B!", Key: "123"},
-						{EventType: "message", SourceId: "A", TargetId: "C", Text: "Hi, C!", Key: "123"},
+						{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi, B!", FSMId: "456"},
+						{EventType: "message", SourceId: "A", TargetId: "C", Text: "Hi, C!", FSMId: "456"},
 					},
 				},
 			},
-			ka: map[string]string{},
+			fa: map[string]string{},
 			expectedEvents: []event{
-				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi, B!", Key: "123", JSON: map[string]interface{}{}},
-				{EventType: "message", SourceId: "A", TargetId: "C", Text: "Hi, C!", Key: "123", JSON: map[string]interface{}{}},
+				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi, B!", FSMId: "456", Key: "123", JSON: map[string]interface{}{}},
+				{EventType: "message", SourceId: "A", TargetId: "C", Text: "Hi, C!", FSMId: "456", Key: "123", JSON: map[string]interface{}{}},
 			},
 			expectedKa: map[string]string{},
 			fails:      false,
@@ -92,11 +92,11 @@ func TestProcessMessage(t *testing.T) {
 			rs: []rule{
 				{
 					Patterns: []pattern{{Field: "{{.Topic}}", Pattern: "topic"}, {Field: "{{.Key}}", Pattern: `\d+`}},
-					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123"}},
+					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456"}},
 				},
 			},
-			ka:             map[string]string{},
-			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123", JSON: map[string]interface{}{}}},
+			fa:             map[string]string{},
+			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", Key: "123", JSON: map[string]interface{}{}}},
 			expectedKa:     map[string]string{},
 			fails:          false,
 		},
@@ -113,10 +113,10 @@ func TestProcessMessage(t *testing.T) {
 			rs: []rule{
 				{
 					Patterns: []pattern{{Field: "{{.Topic}}", Pattern: "topic"}, {Field: "{{.Key}}", Pattern: `\d+not number`}},
-					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123", JSON: map[string]interface{}{}}},
+					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", Key: "123", JSON: map[string]interface{}{}}},
 				},
 			},
-			ka:             map[string]string{},
+			fa:             map[string]string{},
 			expectedEvents: []event{},
 			expectedKa:     map[string]string{},
 			fails:          false,
@@ -134,11 +134,11 @@ func TestProcessMessage(t *testing.T) {
 			rs: []rule{
 				{
 					Patterns: []pattern{{Field: `{{index .Value "name"}}`, Pattern: "relevant"}},
-					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123"}},
+					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456"}},
 				},
 			},
-			ka:             map[string]string{},
-			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123", JSON: newValueFrom(`{"name":"relevant"}`)}},
+			fa:             map[string]string{},
+			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", Key: "123", JSON: newValueFrom(`{"name":"relevant"}`)}},
 			expectedKa:     map[string]string{},
 			fails:          false,
 		},
@@ -155,11 +155,11 @@ func TestProcessMessage(t *testing.T) {
 			rs: []rule{
 				{
 					Patterns: []pattern{{Field: `{{index .Value "value"}}`, Pattern: `\d+`}},
-					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: `{{index .Value "value"}}`, Key: "123"}},
+					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: `{{index .Value "value"}}`, FSMId: "456"}},
 				},
 			},
-			ka:             map[string]string{},
-			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "666", Key: "123", JSON: newValueFrom(`{"value":666}`)}},
+			fa:             map[string]string{},
+			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "666", FSMId: "456", Key: "123", JSON: newValueFrom(`{"value":666}`)}},
 			expectedKa:     map[string]string{},
 			fails:          false,
 		},
@@ -177,12 +177,12 @@ func TestProcessMessage(t *testing.T) {
 				{
 					Patterns: []pattern{{Field: `{{index .Value "primary"}}`, Pattern: `\d+`}},
 					Events: []event{
-						{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", Key: `{{index .Value "primary"}}`, KeyAlias: `{{index .Value "secondary"}}`},
+						{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", FSMId: `{{index .Value "primary"}}`, FSMIdAlias: `{{index .Value "secondary"}}`},
 					},
 				},
 			},
-			ka:             map[string]string{},
-			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", Key: "666", JSON: newValueFrom(`{"primary":666, "secondary":777}`)}},
+			fa:             map[string]string{},
+			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", FSMId: "666", Key: "123", JSON: newValueFrom(`{"primary":666, "secondary":777}`)}},
 			expectedKa:     map[string]string{"777": "666"},
 			fails:          false,
 		},
@@ -200,12 +200,12 @@ func TestProcessMessage(t *testing.T) {
 				{
 					Patterns: []pattern{{Field: `{{.Topic}}`, Pattern: `topic`}},
 					Events: []event{
-						{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", Key: `{{index .Value "secondary"}}`},
+						{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", FSMId: `{{index .Value "secondary"}}`},
 					},
 				},
 			},
-			ka:             map[string]string{"777": "666"},
-			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", Key: "666", JSON: newValueFrom(`{"secondary":777}`)}},
+			fa:             map[string]string{"777": "666"},
+			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", FSMId: "666", Key: "123", JSON: newValueFrom(`{"secondary":777}`)}},
 			expectedKa:     map[string]string{"777": "666"},
 			fails:          false,
 		},
@@ -222,11 +222,11 @@ func TestProcessMessage(t *testing.T) {
 			rs: []rule{
 				{
 					Patterns: []pattern{{Field: "{{.Topic}}", Pattern: "topic"}},
-					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123"}},
+					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456"}},
 				},
 			},
-			globalKey:      "456",
-			ka:             map[string]string{},
+			globalFSMId:    "789",
+			fa:             map[string]string{},
 			expectedEvents: []event{},
 			expectedKa:     map[string]string{},
 			fails:          false,
@@ -244,13 +244,13 @@ func TestProcessMessage(t *testing.T) {
 			rs: []rule{
 				{
 					Patterns: []pattern{{Field: "{{.Topic}}", Pattern: "topic"}},
-					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123"}},
+					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456"}},
 				},
 			},
-			globalKey: "123",
-			ka:        map[string]string{},
+			globalFSMId: "456",
+			fa:          map[string]string{},
 			expectedEvents: []event{
-				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", Key: "123", JSON: map[string]interface{}{}},
+				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", Key: "123", JSON: map[string]interface{}{}},
 			},
 			expectedKa: map[string]string{},
 			fails:      false,
@@ -258,7 +258,7 @@ func TestProcessMessage(t *testing.T) {
 	}
 
 	for _, ts := range tests {
-		actualEvents, err := processMessage(ts.m, ts.rs, ts.ka, ts.globalKey)
+		actualEvents, err := processMessage(ts.m, ts.rs, ts.fa, ts.globalFSMId)
 		if ts.fails && err == nil {
 			t.Errorf("'%v' should have failed", ts.name)
 			t.FailNow()
@@ -270,8 +270,8 @@ func TestProcessMessage(t *testing.T) {
 		if !reflect.DeepEqual(actualEvents, ts.expectedEvents) {
 			t.Errorf("on '%v': events mismatch; expected %+v but got %+v", ts.name, ts.expectedEvents, actualEvents)
 		}
-		if !reflect.DeepEqual(ts.ka, ts.expectedKa) {
-			t.Errorf("on '%v': key aliases not updated; expected %+v but got %+v", ts.name, ts.expectedKa, ts.ka)
+		if !reflect.DeepEqual(ts.fa, ts.expectedKa) {
+			t.Errorf("on '%v': key aliases not updated; expected %+v but got %+v", ts.name, ts.expectedKa, ts.fa)
 		}
 	}
 }

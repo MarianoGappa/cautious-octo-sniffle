@@ -2,13 +2,11 @@ package main
 
 import (
 	"bytes"
-	"log"
 	"regexp"
 	"text/template"
 )
 
-func processMessage(m message, rules []rule, keyAliases map[string]string, globalKey string) ([]event, error) {
-	log.Printf("uuid = %v, offset = %v\n", m.Value["campaignUUID"], m.Offset)
+func processMessage(m message, rules []rule, fsmIdAliases map[string]string, globalFSMId string) ([]event, error) {
 	events := []event{}
 	for _, r := range rules {
 		pass := true
@@ -36,11 +34,11 @@ func processMessage(m message, rules []rule, keyAliases map[string]string, globa
 			if err != nil {
 				return events, err
 			}
-			bKey, err := parseTempl(e.Key, m)
+			bFSMId, err := parseTempl(e.FSMId, m)
 			if err != nil {
 				return events, err
 			}
-			bKeyAlias, err := parseTempl(e.KeyAlias, m)
+			bFSMIdAlias, err := parseTempl(e.FSMIdAlias, m)
 			if err != nil {
 				return events, err
 			}
@@ -57,25 +55,26 @@ func processMessage(m message, rules []rule, keyAliases map[string]string, globa
 				return events, err
 			}
 
-			key := string(bKey)
-			if ka, ok := keyAliases[key]; len(ka) > 0 && ok {
-				key = ka
+			fsmId := string(bFSMId)
+			if fa, ok := fsmIdAliases[fsmId]; len(fa) > 0 && ok {
+				fsmId = fa
 			}
-			if len(bKeyAlias) > 0 && len(bKey) > 0 {
-				keyAliases[string(bKeyAlias)] = key
+			if len(bFSMIdAlias) > 0 && len(bFSMId) > 0 {
+				fsmIdAliases[string(bFSMIdAlias)] = fsmId
 			}
 
-			if len(globalKey) > 0 && globalKey != key {
+			if len(globalFSMId) > 0 && globalFSMId != fsmId {
 				continue
 			}
 
 			events = append(events, event{
 				EventType: string(bEventType),
-				Key:       key,
+				FSMId:     fsmId,
 				SourceId:  string(bSourceId),
 				TargetId:  string(bTargetId),
 				Text:      string(bText),
 				JSON:      m.Value,
+				Key:       m.Key,
 			})
 		}
 	}

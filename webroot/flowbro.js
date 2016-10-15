@@ -2,7 +2,7 @@ let documentationModeIterator = 0
 const eventQueue = []
 const eventLog = []
 const state = {}
-var filterKey = undefined
+var filterFSMId = undefined
 var filterIds = []
 
 const init = (configFile) => {
@@ -18,7 +18,7 @@ const init = (configFile) => {
     }
 }
 
-const log = (message, _color, from, to, json, key) => {
+const log = (message, _color, from, to, json, fsmId) => {
     const colors = {
         'severe':'#E53A40',
         'error': '#E53A40',
@@ -35,8 +35,8 @@ const log = (message, _color, from, to, json, key) => {
 
     const color = colors[_color] || colors['default']
     const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined'
-    const keyWrapper = '<span class="key-wrapper"></span>'
-    const header = isFlyingMessage ? `<div class='log-header'>` + keyWrapper + minibox(fromId, from) + `<span> → </span>` + minibox(toId, to) + `</div>` : ''
+    const fsmIdWrapper = '<span class="fsm-id-wrapper"></span>'
+    const header = isFlyingMessage ? `<div class='log-header'>` + fsmIdWrapper + minibox(fromId, from) + `<span> → </span>` + minibox(toId, to) + `</div>` : ''
 
     const prettyJson = typeof json !== 'undefined' ? '<pre>' + syntaxHighlight(json) + '</pre>' : '';
 
@@ -45,7 +45,7 @@ const log = (message, _color, from, to, json, key) => {
     element.className = 'logline'
     element.style.color = color
     element.innerHTML = header + `<div class='log-content'>` + message + '<br/>' + prettyJson + '</div>'
-    element.dataset.key = key
+    element.dataset.fsmId = fsmId
     element.dataset.from = fromId
     element.dataset.to = toId
 
@@ -55,13 +55,13 @@ const log = (message, _color, from, to, json, key) => {
 
     _('#log').insertBefore(element, _('#log').firstChild)
 
-    if (isFlyingMessage && typeof key !== 'undefined') {
-        addFilteringKey(key, _('#' + element.id + ' .key-wrapper'), false)
+    if (isFlyingMessage && typeof fsmId !== 'undefined') {
+        addFilteringFSMId(fsmId, _('#' + element.id + ' .fsm-id-wrapper'), false)
     }
 
     // hide if being filtered out
     if (isFlyingMessage) {
-        if ((filterKey && filterKey != key) || (filterIds.length && filterIds.indexOf(fromId) == -1 && filterIds.indexOf(toId) == -1)) {
+        if ((filterFSMId && filterFSMId != fsmId) || (filterIds.length && filterIds.indexOf(fromId) == -1 && filterIds.indexOf(toId) == -1)) {
             element.style.display = 'none'
         }
     }
@@ -72,24 +72,24 @@ const log = (message, _color, from, to, json, key) => {
 }
 
 const updateFilters = () => {
-    if (filterKey || filterIds.length) {
+    if (filterFSMId || filterIds.length) {
         __('.logline:not([data-always])').forEach((e) => e.style.display = 'none')
         __('.moon').forEach((e) => e.style.display = 'none')
 
-        const fKeySel = filterKey ? `[data-key='${filterKey}']` : ''
+        const fFSMIdSel = filterFSMId ? `[data-fsm-id='${filterFSMId}']` : ''
         const fIdsSel = filterIds.length
             ?
-                filterIds.map((i) => `.logline[data-from='${i}']${fKeySel}, .logline[data-to='${i}']${fKeySel}`).join(', ')
+                filterIds.map((i) => `.logline[data-from='${i}']${fFSMIdSel}, .logline[data-to='${i}']${fFSMIdSel}`).join(', ')
             :
-                `.logline${fKeySel}`
+                `.logline${fFSMIdSel}`
 
         __(fIdsSel).forEach((e) => e.style.display = 'block')
-        __(`.moon${fKeySel}`).forEach((e) => e.style.display = 'inline-block')
+        __(`.moon${fFSMIdSel}`).forEach((e) => e.style.display = 'inline-block')
 
         // init filter section
         while (_('#filter-content').firstChild) { _('#filter-content').removeChild(_('#filter-content').firstChild) }
         _('#filter-content').innerHTML = "<span>Showing only:<span>";
-        if (filterKey) addFilteringKey(filterKey, _('#filter-content'), true)
+        if (filterFSMId) addFilteringFSMId(filterFSMId, _('#filter-content'), true)
         filterIds.forEach((i) => { addFilteringID(i, _('#filter-content'), true) })
         _('#filter').style.display = 'block'
 
@@ -101,18 +101,18 @@ const updateFilters = () => {
     __('.moon').forEach((e) => e.style.display = 'inline-block')
 }
 
-const addFilteringKey = (key, parent, addListener) => {
-    const rgb = keyToRGBA(key)
+const addFilteringFSMId = (fsmId, parent, addListener) => {
+    const rgb = stringToRGBA(fsmId)
 
-    const filteringKey = document.createElement('span')
-    filteringKey.className = 'filtering-key'
-    filteringKey.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
-    parent.appendChild(filteringKey)
+    const filteringFSMId = document.createElement('span')
+    filteringFSMId.className = 'filtering-fsm-id'
+    filteringFSMId.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
+    parent.appendChild(filteringFSMId)
 
     // filtering listener
     if (addListener) {
-        filteringKey.onclick = function () {
-            filterKey = undefined
+        filteringFSMId.onclick = function () {
+            filterFSMId = undefined
             parent.removeChild(this)
             updateFilters()
         }
@@ -121,8 +121,8 @@ const addFilteringKey = (key, parent, addListener) => {
     // Create tooltip
     const tooltip = document.createElement('span')
     tooltip.className = 'tooltip'
-    tooltip.innerHTML = textLimit(key, 20)
-    filteringKey.appendChild(tooltip)
+    tooltip.innerHTML = textLimit(fsmId, 20)
+    filteringFSMId.appendChild(tooltip)
 }
 
 const addFilteringID = (id, parent, addListener) => {
@@ -151,10 +151,10 @@ const run = (timeout) => {
             config.kafka.brokers = brokersOverride
             log(`Overriding brokers to [${brokersOverride}]`)
         }
-        if (key) {
-            config.key = key
+        if (fsmId) {
+            config.fsmId = fsmId
             config.kafka.offset = String(offset)
-            log(`Grepping messages for [${key}], with an offset of [${offset}]`)
+            log(`Grepping messages for [${fsmId}], with an offset of [${offset}]`)
         }
         doRun()
     } else if (timeout > 0) {
@@ -198,15 +198,15 @@ const showNextUiEvent = () => {
             _(`[id='component_${safeSourceId}']`),
             _(`[id='component_${safeTargetId}']`),
             event.quantity ? event.quantity : 1,
-            event.key
+            event.fsmId
         )
     }
     if (typeof event.logs !== 'undefined') {
         for (let i in event.logs) {
-            log(event.logs[i].text, event.logs[i].color, event.sourceId, event.targetId, i == 0 ? event.json : undefined, event.key)
+            log(event.logs[i].text, event.logs[i].color, event.sourceId, event.targetId, i == 0 ? event.json : undefined, event.fsmId)
         }
     } else if (event.text) {
-        log(event.text, event.color, event.sourceId, event.targetId, event.json, event.key)
+        log(event.text, event.color, event.sourceId, event.targetId, event.json, event.fsmId)
     }
 
     // Save enqueued animation into event log; keep it <= 100 events
@@ -261,7 +261,7 @@ const aggregateEventOnEventQueue = (event) => {
     const indexOfSimilarMessage = (event, eventQueue) => {
         let index = undefined
         eventQueue.forEach((v, i) => {
-            if (v.sourceId == event.sourceId && v.targetId == event.targetId && v.key == event.key)
+            if (v.sourceId == event.sourceId && v.targetId == event.targetId && v.fsmId == event.fsmId)
                 index = i
         })
         return index
@@ -414,7 +414,7 @@ const loadComponents = (config) => {
     }
 }
 
-const animateFromTo = (source, target, quantity, key) => {
+const animateFromTo = (source, target, quantity, fsmId) => {
     const element = document.createElement('div')
     element.id = 'anim_' + guid()
     element.className = 'detached message'
@@ -426,8 +426,8 @@ const animateFromTo = (source, target, quantity, key) => {
     element.style.zIndex = -1
 
     var rgb = undefined
-    if (config.colorBasedOnKey && typeof key !== 'undefined' && key !== '') {
-        rgb = keyToRGBA(key)
+    if (typeof fsmId !== 'undefined' && fsmId !== '') {
+        rgb = stringToRGBA(fsmId)
     }
 
     if (quantity > 1) {
@@ -455,20 +455,20 @@ const animateFromTo = (source, target, quantity, key) => {
 
     element.className = `${styleId} detached message`
 
-    const postAnimation = (element, style, target, rgb, key) => () => {
+    const postAnimation = (element, style, target, rgb, fsmId) => () => {
         element.parentNode.removeChild(element)
         style.parentNode.removeChild(style)
         if (rgb) {
-            addMoon(source, rgb, key)
-            addMoon(target, rgb, key)
+            addMoon(source, rgb, fsmId)
+            addMoon(target, rgb, fsmId)
         }
     }
 
-    window.setTimeout(postAnimation(element, style, target, rgb, key), length)
+    window.setTimeout(postAnimation(element, style, target, rgb, fsmId), length)
 }
 
-const addMoon = (target, rgb, key) => {
-    const moonId = target.id + "_" + key
+const addMoon = (target, rgb, fsmId) => {
+    const moonId = target.id + "_" + fsmId
     const moonHolderId = target.id + "_moon_holder"
 
     if (_('#' + moonId)) {
@@ -480,12 +480,12 @@ const addMoon = (target, rgb, key) => {
     moon.id = moonId
     moon.className = 'moon'
     moon.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
-    moon.dataset.key = key
+    moon.dataset.fsmId = fsmId
     moon.dataset.to = target.id
     moon.dataset.clicked = -1
 
     // Hide moon if currently filtered out
-    if (filterKey && filterKey != key) {
+    if (filterFSMId && filterFSMId != fsmId) {
         moon.style.display = 'none'
     }
 
@@ -494,10 +494,10 @@ const addMoon = (target, rgb, key) => {
     // filtering listener
     moon.onclick = function () {
         moon.dataset.clicked = moon.dataset.clicked  * -1
-        if (moon.dataset.clicked == 1 && filterKey != key) {
-            filterKey = key
+        if (moon.dataset.clicked == 1 && filterFSMId != fsmId) {
+            filterFSMId = fsmId
         } else {
-            filterKey = undefined
+            filterFSMId = undefined
         }
         updateFilters()
     };
@@ -505,7 +505,7 @@ const addMoon = (target, rgb, key) => {
     // Create tooltip
     const tooltip = document.createElement('span')
     tooltip.className = 'tooltip'
-    tooltip.innerHTML = textLimit(key, 20)
+    tooltip.innerHTML = textLimit(fsmId, 20)
     _('#' + moonId).appendChild(tooltip)
 
     // Limit to 4 moons
@@ -559,11 +559,11 @@ if (offsetParam) {
     offset = offsetParam
 }
 
-// Key query param
-let key = undefined
-const keyParam = getParameterByName('key')
-if (keyParam) {
-    key = keyParam
+// FSMId query param
+let fsmId = undefined
+const fsmIdParam = getParameterByName('fsmId')
+if (fsmIdParam) {
+    fsmId = fsmIdParam
     if (!offsetParam) {
         offset = -1000
     }

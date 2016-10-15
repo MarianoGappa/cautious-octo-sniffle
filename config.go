@@ -23,13 +23,14 @@ type kafka struct {
 }
 
 type event struct {
-	EventType string                 `json:"eventType"`
-	SourceId  string                 `json:"sourceId"`
-	TargetId  string                 `json:"targetId"`
-	Text      string                 `json:"text"`
-	Key       string                 `json:"key"`
-	KeyAlias  string                 `json:"keyAlias"`
-	JSON      map[string]interface{} `json:"json"`
+	EventType  string                 `json:"eventType"`
+	SourceId   string                 `json:"sourceId"`
+	TargetId   string                 `json:"targetId"`
+	Text       string                 `json:"text"`
+	FSMId      string                 `json:"fsmId"`
+	FSMIdAlias string                 `json:"fsmIdAlias"`
+	JSON       map[string]interface{} `json:"json"`
+	Key        string                 `json:"key"`
 }
 
 type pattern struct {
@@ -45,7 +46,7 @@ type rule struct {
 type configJSON struct {
 	Rules []rule
 	Kafka kafka
-	Key   string
+	FSMId string
 }
 
 type consumerConfig struct {

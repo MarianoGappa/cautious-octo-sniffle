@@ -50,8 +50,8 @@ const longToByteArray = (long) => {
     return byteArray;
 };
 
-const keyToRGBA = (key) => {
-    const arr = longToByteArray(hash(key))
+const stringToRGBA = (s) => {
+    const arr = longToByteArray(hash(s))
     return `rgba(${arr[0]}, ${arr[1]}, ${arr[2]}, 0.6)`
 }
 

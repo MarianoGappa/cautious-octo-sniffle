@@ -59,7 +59,7 @@ b {
     box-shadow: 0 2px 5px rgba(0,0,0,0.26);
     text-transform: uppercase;
 }
-.component:hover, .moon:hover, .filtering-key:hover, .filtering-id:hover {
+.component:hover, .moon:hover, .filtering-fsm-id:hover, .filtering-id:hover {
     cursor: hand;
 }
 .component:active {
@@ -71,7 +71,7 @@ b {
     height: 25px;
     padding: 5px;
 }
-.moon, .filtering-key {
+.moon, .filtering-fsm-id {
     display: inline-block;
     width: 20px;
     height: 15px;
@@ -79,11 +79,11 @@ b {
     margin-right: 3px;
     margin-bottom: 3px;
 }
-.moon:active, .filtering-key:active {
+.moon:active, .filtering-fsm-id:active {
     transition: all .1s linear;
     opacity: 0.8;
 }
-.moon:hover .tooltip, .filtering-key:hover .tooltip {
+.moon:hover .tooltip, .filtering-fsm-id:hover .tooltip {
     display: inline;
 }
 .tooltip {
@@ -185,12 +185,12 @@ h2 {
     color: black;
     margin-bottom: 0px;
 }
-.filtering-id, .filtering-key {
+.filtering-id, .filtering-fsm-id {
     margin: 0px;
     margin-right: 10px;
     margin-bottom: 0px;
 }
-.key-wrapper .filtering-key {
+.fsm-id-wrapper .filtering-fsm-id {
     margin-right: 0px;
     margin-bottom: 0px;
 }
