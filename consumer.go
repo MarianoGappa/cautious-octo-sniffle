@@ -308,13 +308,10 @@ func (t timeNow) Unix() int64 {
 }
 
 func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow, rules []rule, globalFSMId string) {
-	var tick <-chan time.Time
-	var ticker *time.Ticker
+	ticker := time.NewTicker(time.Millisecond * 100)
 
-	currentTimestamp := int64(0)
 	buffer := []message{}
 	fsmIdAliases := map[string]string{}
-	initialTimerCh := time.After(5 * time.Second)
 
 	for {
 		select {
@@ -336,31 +333,16 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 			if len(buffer) == 0 {
 				buffer = append(buffer, m)
 			}
-		case <-initialTimerCh:
-			initialTimerCh = nil
-			if len(buffer) == 0 {
-				currentTimestamp = time.Now().UnixNano() / 1000000
-			} else {
-				currentTimestamp = buffer[0].Timestamp.UnixNano() / 1000000
-			}
-			log.Printf("Starting at timestamp %v", currentTimestamp)
-			ticker = time.NewTicker(time.Millisecond * 100)
-			tick = ticker.C
-		case <-tick:
+		case <-ticker.C:
 			events := []event{}
 			incompleteEvents := []event{}
 			for i := 0; len(buffer) > 0 && i < 1000; i++ {
-				if buffer[0].Timestamp.UnixNano()/1000000 <= currentTimestamp {
-					evs, err := processMessage(buffer[0], rules, fsmIdAliases, &incompleteEvents, globalFSMId)
-					if err != nil {
-						sendError(fmt.Sprintf("Error while processing message: err=%v", err), ws)
-						break
-					}
-					events = append(events, evs...)
-					buffer = buffer[1:]
-				} else {
+				err := processMessage(buffer[0], rules, fsmIdAliases, &events, &incompleteEvents, globalFSMId)
+				if err != nil {
+					sendError(fmt.Sprintf("Error while processing message: err=%v", err), ws)
 					break
 				}
+				buffer = buffer[1:]
 			}
 
 			for _, ie := range incompleteEvents {
@@ -382,8 +364,6 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 				log.Printf("Error while trying to send to WebSocket: err=%v\n", err)
 				return
 			}
-
-			currentTimestamp += 100
 		case <-q:
 			log.Println("Received quit signal")
 			return

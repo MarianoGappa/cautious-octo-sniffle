@@ -305,7 +305,8 @@ func TestProcessMessage(t *testing.T) {
 	}
 
 	for _, ts := range tests {
-		actualEvents, err := processMessage(ts.m, ts.rs, ts.fa, &ts.ie, ts.globalFSMId)
+		actualEvents := []event{}
+		err := processMessage(ts.m, ts.rs, ts.fa, &actualEvents, &ts.ie, ts.globalFSMId)
 
 		if err != nil {
 			t.Errorf("'%v' shouldn't have failed, but did with %v", ts.name, err)

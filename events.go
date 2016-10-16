@@ -6,19 +6,18 @@ import (
 	"text/template"
 )
 
-func processMessage(m message, rules []rule, fsmIdAliases map[string]string, incompleteEvents *[]event, globalFSMId string) ([]event, error) {
-	events := []event{}
+func processMessage(m message, rules []rule, fsmIdAliases map[string]string, events *[]event, incompleteEvents *[]event, globalFSMId string) error {
 	for _, r := range rules {
 		pass := true
 		for _, p := range r.Patterns {
 			b, err := parseTempl(p.Field, m)
 			if err != nil {
-				return []event{}, err
+				return err
 			}
 
 			matched, err := regexp.Match(p.Pattern, b)
 			if err != nil {
-				return []event{}, err
+				return err
 			}
 
 			if !matched {
@@ -32,27 +31,27 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, inc
 		for _, e := range r.Events {
 			bEventType, err := parseTempl(e.EventType, m)
 			if err != nil {
-				return events, err
+				return err
 			}
 			bFSMId, err := parseTempl(e.FSMId, m)
 			if err != nil {
-				return events, err
+				return err
 			}
 			bFSMIdAlias, err := parseTempl(e.FSMIdAlias, m)
 			if err != nil {
-				return events, err
+				return err
 			}
 			bSourceId, err := parseTempl(e.SourceId, m)
 			if err != nil {
-				return events, err
+				return err
 			}
 			bTargetId, err := parseTempl(e.TargetId, m)
 			if err != nil {
-				return events, err
+				return err
 			}
 			bText, err := parseTempl(e.Text, m)
 			if err != nil {
-				return events, err
+				return err
 			}
 
 			fsmId := string(bFSMId)
@@ -63,7 +62,7 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, inc
 			if _, ok := fsmIdAliases[fsmIdAlias]; !ok && len(fsmIdAlias) > 0 && len(fsmId) > 0 { // if new id/alias pair
 				fsmIdAliases[fsmIdAlias] = fsmId // save new alias definition
 
-				events = append(events, event{ // ui will need to resolve aliases too
+				*events = append(*events, event{ // ui will need to resolve aliases too
 					EventType:  "alias",
 					FSMId:      fsmId,
 					FSMIdAlias: fsmIdAlias,
@@ -103,10 +102,10 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, inc
 				JSON:      []map[string]interface{}{m.Value},
 			}
 
-			events = aggregate(events, newE, e.Aggregate, globalFSMId)
+			*events = aggregate(*events, newE, e.Aggregate, globalFSMId)
 		}
 	}
-	return events, nil
+	return nil
 }
 
 func parseTempl(s string, m message) ([]byte, error) {
@@ -130,9 +129,10 @@ func aggregate(events []event, e event, aggregate bool, globalFSMId string) []ev
 	if !aggregate {
 		return append(events, e)
 	}
-	for _, ev := range events {
+
+	for i, ev := range events {
 		if ev.FSMId == e.FSMId && ev.SourceId == e.SourceId && ev.TargetId == e.TargetId {
-			ev.JSON = append(ev.JSON, e.JSON...)
+			events[i].JSON = append(events[i].JSON, e.JSON...)
 			return events
 		}
 	}

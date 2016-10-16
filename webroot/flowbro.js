@@ -30,21 +30,31 @@ const log = (message, _color, from, to, json, fsmId) => {
         'default': 'inherit'
     }
 
+    quantity = 1
+    if (Array.isArray(json)) {
+        quantity = json.length
+        if (quantity == 1) {
+            json = json[0]
+        }
+    }
+
     const fromId = safeId('component_' + from)
     const toId = safeId('component_' + to)
 
     const color = colors[_color] || colors['default']
     const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined'
     const fsmIdWrapper = '<span class="fsm-id-wrapper"></span>'
-    const header = isFlyingMessage ? `<div class='log-header'>` + fsmIdWrapper + minibox(fromId, from) + `<span> → </span>` + minibox(toId, to) + `</div>` : ''
+    const quantityWrapper = quantity > 1 ? `<span> × </span><span class="quantity-wrapper">${quantity}</span>` : ''
 
-    const prettyJson = typeof json !== 'undefined' ? '<pre>' + syntaxHighlight(json) + '</pre>' : '';
+    const header = isFlyingMessage ? `<div class='log-header'>` + fsmIdWrapper + minibox(fromId, from) + `<span> → </span>` + minibox(toId, to) + quantityWrapper + `</div>` : ''
+
+    const prettyJson = json ? '<pre>' + syntaxHighlight(json) + '</pre>' : '';
 
     const element = document.createElement('span')
     element.id = 'log_' + guid()
     element.className = 'logline'
     element.style.color = color
-    element.innerHTML = header + `<div class='log-content'>` + message + '<br/>' + prettyJson + '</div>'
+    element.innerHTML = header + `<div class='log-content'>` + (message ? message + '<br/>' : '') + prettyJson + '</div>'
     element.dataset.fsmId = fsmId
     element.dataset.from = fromId
     element.dataset.to = toId
@@ -146,7 +156,7 @@ const addFilteringID = (id, parent, addListener) => {
 }
 
 const run = (timeout) => {
-    if (config) {
+    if (typeof config !== 'undefined') {
         if (brokersOverride) {
             config.kafka.brokers = brokersOverride
             log(`Overriding brokers to [${brokersOverride}]`)
@@ -189,6 +199,12 @@ const showNextUiEvent = () => {
     }
 
     const event = eventQueue.shift()
+    while (event.eventType != 'message') {
+        if (event.text) {
+            log(event.text, event.color, event.sourceId, event.targetId, event.json, event.fsmId)
+        }
+        event = eventQueue.shift()
+    }
 
     if (event.eventType == 'message') {
         const safeSourceId = safeId(event.sourceId)
@@ -201,11 +217,7 @@ const showNextUiEvent = () => {
             event.fsmId
         )
     }
-    if (typeof event.logs !== 'undefined') {
-        for (let i in event.logs) {
-            log(event.logs[i].text, event.logs[i].color, event.sourceId, event.targetId, i == 0 ? event.json : undefined, event.fsmId)
-        }
-    } else if (event.text) {
+    if (event.text) {
         log(event.text, event.color, event.sourceId, event.targetId, event.json, event.fsmId)
     }
 
@@ -234,6 +246,7 @@ const openWebSocket = () => {
     }
 
     ws.onmessage = (message) => {
+        console.log(message.data)
         if (!config.documentationMode) {
             try{
                 processUiEvents(JSON.parse(message.data))
@@ -250,63 +263,12 @@ const openWebSocket = () => {
     ws.onerror = (event) => log(`WebSocket had error! ${event}`, 'error')
 }
 
-const processUiEvents = (events) => { for (event of events) {
-    if (config.documentationMode)
+const processUiEvents = (events) => {
+    for (event of events) {
+        if (!config.documentationMode) {
+            event.quantity = Array.isArray(event.json) ? event.json.length : 1
+        }
         eventQueue.push(event)
-    else
-        aggregateEventOnEventQueue(event)
-} }
-
-const aggregateEventOnEventQueue = (event) => {
-    const indexOfSimilarMessage = (event, eventQueue) => {
-        let index = undefined
-        eventQueue.forEach((v, i) => {
-            if (v.sourceId == event.sourceId && v.targetId == event.targetId && v.fsmId == event.fsmId)
-                index = i
-        })
-        return index
-    }
-
-    // if it's an A -> B type of event
-    if (event.eventType == 'message') {
-        const i = indexOfSimilarMessage(event, eventQueue)
-
-        // if a message from the same A -> B exists, +1 its quantity and add its log if present
-        if (typeof i !== 'undefined') {
-            eventQueue[i].quantity = eventQueue[i].quantity ? eventQueue[i].quantity + 1 : 2
-            if (typeof event.text !== 'undefined') eventQueue[i].logs.push(event)
-
-        // if it's the first message from A -> B, add it to the queue and start a collection of logs for it
-        } else {
-            let aggregatedEvent = event
-            if (typeof event.text !== 'undefined') {
-                if (typeof event.logs !== 'undefined') {
-                    aggregatedEvent.logs.push(event)
-                } else {
-                    aggregatedEvent.logs = [event]
-                }
-            }
-            eventQueue.push(aggregatedEvent)
-        }
-
-    // if it's a log type of event
-    } else if (event.eventType == 'log') {
-        let lastId = eventQueue.length - 1
-
-        // if the last event on the queue is a log event, add this log to it
-        if (eventQueue[lastId] && eventQueue[lastId].eventType == 'log') {
-            eventQueue[lastId].logs.push(event)
-
-        // otherwise, push a new event and start a collection of logs for it
-        } else {
-            let aggregatedEvent = event
-            if (typeof event.logs !== 'undefined') {
-                aggregatedEvent.logs.push(event)
-            } else {
-                aggregatedEvent.logs = [event]
-            }
-            eventQueue.push(aggregatedEvent)
-        }
     }
 }
 
