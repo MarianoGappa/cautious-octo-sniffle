@@ -18,7 +18,26 @@ const init = (configFile) => {
     }
 }
 
-const log = (message, _color, from, to, json, fsmId) => {
+const log = (message, _color, from, to, json, fsmId, aggregate) => {
+    const fromId = safeId('component_' + from)
+    const toId = safeId('component_' + to)
+    const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined'
+
+    quantity = 1
+    if (Array.isArray(json)) {
+        quantity = json.length
+        if (quantity == 1) {
+            json = json[0]
+        }
+    }
+
+    const existingSelector = `.logline[data-from='${fromId}'][data-to='${toId}'][data-fsm-id='${fsmId}']`
+    if (aggregate && isFlyingMessage && _(existingSelector)) {
+        const current = parseInt(_(`${existingSelector} .quantity-wrapper`).innerHTML)
+        _(`${existingSelector} .quantity-wrapper`).innerHTML = current + quantity
+        return
+    }
+
     const colors = {
         'severe':'#E53A40',
         'error': '#E53A40',
@@ -30,21 +49,11 @@ const log = (message, _color, from, to, json, fsmId) => {
         'default': 'inherit'
     }
 
-    quantity = 1
-    if (Array.isArray(json)) {
-        quantity = json.length
-        if (quantity == 1) {
-            json = json[0]
-        }
-    }
-
-    const fromId = safeId('component_' + from)
-    const toId = safeId('component_' + to)
-
     const color = colors[_color] || colors['default']
-    const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined'
     const fsmIdWrapper = '<span class="fsm-id-wrapper"></span>'
-    const quantityWrapper = quantity > 1 ? `<span> × </span><span class="quantity-wrapper">${quantity}</span>` : ''
+
+    const quantityDisplay = quantity > 1 ? 'inline' : 'none'
+    const quantityWrapper = `<span class="quantity-section" style="display:${quantityDisplay}"><span> × </span><span class="quantity-wrapper">${quantity}</span></span>`
 
     const header = isFlyingMessage ? `<div class='log-header'>` + fsmIdWrapper + minibox(fromId, from) + `<span> → </span>` + minibox(toId, to) + quantityWrapper + `</div>` : ''
 
@@ -223,7 +232,7 @@ const showNextUiEvent = () => {
         )
     }
     if (event.text) {
-        log(event.text, event.color, event.sourceId, event.targetId, event.json, event.fsmId)
+        log(event.text, event.color, event.sourceId, event.targetId, event.json, event.fsmId, event.aggregate)
     }
 
     // Save enqueued animation into event log; keep it <= 100 events
@@ -255,7 +264,7 @@ const openWebSocket = () => {
             try{
                 processUiEvents(JSON.parse(message.data))
             } catch (e) {
-                console.log(`Couldn't parse this as JSON: ${lines[i]}`, "\nError: ", e)
+                console.log(`Couldn't parse this as JSON: ${message.data}`, "\nError: ", e)
             }
         } else if (!config.hideIgnoredMessages) {
             console.log('Ignored incoming message', message.data)

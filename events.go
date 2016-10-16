@@ -100,6 +100,7 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, eve
 				TargetId:  string(bTargetId),
 				Text:      string(bText),
 				JSON:      []map[string]interface{}{m.Value},
+				Aggregate: e.Aggregate,
 			}
 
 			*events = aggregate(*events, newE, e.Aggregate, globalFSMId)
