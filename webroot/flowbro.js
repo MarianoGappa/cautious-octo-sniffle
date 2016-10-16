@@ -438,7 +438,6 @@ const addMoon = (target, rgb, fsmId, quantity) => {
     const moonHolderId = target.id + "_moon_holder"
 
     if (_('#' + moonId)) {
-    console.log(parseInt(_('#' + moonId + "_counter").innerHTML))
         maybeCurrentQuantity = parseInt(_('#' + moonId + "_counter").innerHTML)
         newQuantity = maybeCurrentQuantity ? maybeCurrentQuantity + quantity : quantity
         _('#' + moonId + "_counter").innerHTML = newQuantity
@@ -469,7 +468,6 @@ const addMoon = (target, rgb, fsmId, quantity) => {
     _('#' + moonId).appendChild(moonCounter)
     _('#' + moonId + "_counter").innerHTML = quantity ? quantity : 0
     moonCounter.style.display = quantity <= 1 ? 'none' : 'inline-block'
-            console.log(quantity)
 
 
     // filtering listener
