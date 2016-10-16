@@ -59,7 +59,7 @@ b {
     box-shadow: 0 2px 5px rgba(0,0,0,0.26);
     text-transform: uppercase;
 }
-.component:hover, .moon:hover, .filtering-key:hover, .filtering-id:hover {
+.component:hover, .moon:hover, .filtering-fsm-id:hover, .filtering-id:hover {
     cursor: hand;
 }
 .component:active {
@@ -71,20 +71,27 @@ b {
     height: 25px;
     padding: 5px;
 }
-.moon, .filtering-key {
+.moon, .filtering-fsm-id {
     display: inline-block;
     width: 20px;
     height: 15px;
     background-size: 20px 15px !important; /* gradient must be defined on instantiation :( */
     margin-right: 3px;
     margin-bottom: 3px;
+    text-align: center;
 }
-.moon:active, .filtering-key:active {
+.moon:active, .filtering-fsm-id:active {
     transition: all .1s linear;
     opacity: 0.8;
 }
-.moon:hover .tooltip, .filtering-key:hover .tooltip {
+.moon:hover .tooltip, .filtering-fsm-id:hover .tooltip {
     display: inline;
+}
+.moon_counter {
+    font-weight: bolder;
+    font-size: 8px;
+    padding-top: 3px;
+    text-shadow: 1px 2px 1px black;
 }
 .tooltip {
     display: none;
@@ -128,6 +135,16 @@ b {
 }
 .log-content {
     padding: 15px;
+}
+.log-content pre {
+    max-height: 250px;
+    border: 1px solid #CCC;
+    margin-left: 0px;
+    margin-top: 15px;
+    padding: 7px;
+    width: 400px;
+    background-color: #E0E0E0;
+    overflow: scroll;
 }
 #filter-content {
     display: flex;
@@ -185,12 +202,12 @@ h2 {
     color: black;
     margin-bottom: 0px;
 }
-.filtering-id, .filtering-key {
+.filtering-id, .filtering-fsm-id {
     margin: 0px;
     margin-right: 10px;
     margin-bottom: 0px;
 }
-.key-wrapper .filtering-key {
+.fsm-id-wrapper .filtering-fsm-id {
     margin-right: 0px;
     margin-bottom: 0px;
 }
@@ -214,6 +231,13 @@ h2 {
     display: inline;
     height: 20px;
     margin: 5px;
+}
+.quantity-wrapper {
+    background-color: rgb(233, 30, 99);
+    padding: 7px;
+    border-radius: 50px;
+    color: white;
+    font-weight: bolder;
 }
 
 /* http://stackoverflow.com/questions/4810841/how-can-i-pretty-print-json-using-javascript */

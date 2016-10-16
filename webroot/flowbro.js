@@ -2,22 +2,42 @@ let documentationModeIterator = 0
 const eventQueue = []
 const eventLog = []
 const state = {}
-var filterKey = undefined
+var filterFSMId = undefined
 var filterIds = []
-
-var keyAliases = {} // https://github.com/MarianoGappa/flowbro/issues/21
 
 const init = (configFile) => {
     if (!_(`init_script_${configFile}`)) {
-        const element = document.createElement('script')
-        element.setAttribute('id', `init_script_${configFile}`)
-        element.setAttribute('src', `configs/${configFile}.js`)
-        element.setAttribute('async', false)
-        document.head.appendChild(element)
+        var xhr = new XMLHttpRequest()
+        xhr.onreadystatechange = function(){
+          if(xhr.status == 200 && xhr.readyState == 4){
+            config = JSON.parse(xhr.responseText)
+          }
+        }
+        xhr.open("GET",`configs/${configFile}.js`,true)
+        xhr.send()
     }
 }
 
-const log = (message, _color, from, to, json, key) => {
+const log = (message, _color, from, to, json, fsmId, aggregate) => {
+    const fromId = safeId('component_' + from)
+    const toId = safeId('component_' + to)
+    const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined' && from && to
+
+    quantity = 1
+    if (Array.isArray(json)) {
+        quantity = json.length
+        if (quantity == 1) {
+            json = json[0]
+        }
+    }
+
+    const existingSelector = `.logline[data-from='${fromId}'][data-to='${toId}'][data-fsm-id='${fsmId}']`
+    if (aggregate && isFlyingMessage && _(existingSelector)) {
+        const current = parseInt(_(`${existingSelector} .quantity-wrapper`).innerHTML)
+        _(`${existingSelector} .quantity-wrapper`).innerHTML = current + quantity
+        return
+    }
+
     const colors = {
         'severe':'#E53A40',
         'error': '#E53A40',
@@ -29,22 +49,22 @@ const log = (message, _color, from, to, json, key) => {
         'default': 'inherit'
     }
 
-    const fromId = safeId('component_' + from)
-    const toId = safeId('component_' + to)
-
     const color = colors[_color] || colors['default']
-    const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined'
-    const keyWrapper = '<span class="key-wrapper"></span>'
-    const header = isFlyingMessage ? `<div class='log-header'>` + keyWrapper + minibox(fromId, from) + `<span> → </span>` + minibox(toId, to) + `</div>` : ''
+    const fsmIdWrapper = '<span class="fsm-id-wrapper"></span>'
 
-    const prettyJson = typeof json !== 'undefined' ? '<pre>' + syntaxHighlight(json) + '</pre>' : '';
+    const quantityDisplay = quantity > 1 ? 'inline' : 'none'
+    const quantityWrapper = `<span class="quantity-section" style="display:${quantityDisplay}"><span> × </span><span class="quantity-wrapper">${quantity}</span></span>`
+
+    const header = isFlyingMessage ? `<div class='log-header'>` + fsmIdWrapper + minibox(fromId, from) + `<span> → </span>` + minibox(toId, to) + quantityWrapper + `</div>` : ''
+
+    const prettyJson = json ? '<pre>' + syntaxHighlight(json) + '</pre>' : '';
 
     const element = document.createElement('span')
     element.id = 'log_' + guid()
     element.className = 'logline'
     element.style.color = color
-    element.innerHTML = header + `<div class='log-content'>` + message + '<br/>' + prettyJson + '</div>'
-    element.dataset.key = key
+    element.innerHTML = header + `<div class='log-content'>` + (message ? message + '<br/>' : '') + prettyJson + '</div>'
+    element.dataset.fsmId = fsmId
     element.dataset.from = fromId
     element.dataset.to = toId
 
@@ -54,13 +74,13 @@ const log = (message, _color, from, to, json, key) => {
 
     _('#log').insertBefore(element, _('#log').firstChild)
 
-    if (isFlyingMessage && typeof key !== 'undefined') {
-        addFilteringKey(key, _('#' + element.id + ' .key-wrapper'), false)
+    if (isFlyingMessage && typeof fsmId !== 'undefined') {
+        addFilteringFSMId(fsmId, _('#' + element.id + ' .fsm-id-wrapper'), false)
     }
 
     // hide if being filtered out
     if (isFlyingMessage) {
-        if ((filterKey && filterKey != key) || (filterIds.length && filterIds.indexOf(fromId) == -1 && filterIds.indexOf(toId) == -1)) {
+        if ((filterFSMId && filterFSMId != fsmId) || (filterIds.length && filterIds.indexOf(fromId) == -1 && filterIds.indexOf(toId) == -1)) {
             element.style.display = 'none'
         }
     }
@@ -71,24 +91,24 @@ const log = (message, _color, from, to, json, key) => {
 }
 
 const updateFilters = () => {
-    if (filterKey || filterIds.length) {
+    if (filterFSMId || filterIds.length) {
         __('.logline:not([data-always])').forEach((e) => e.style.display = 'none')
         __('.moon').forEach((e) => e.style.display = 'none')
 
-        const fKeySel = filterKey ? `[data-key='${filterKey}']` : ''
+        const fFSMIdSel = filterFSMId ? `[data-fsm-id='${filterFSMId}']` : ''
         const fIdsSel = filterIds.length
             ?
-                filterIds.map((i) => `.logline[data-from='${i}']${fKeySel}, .logline[data-to='${i}']${fKeySel}`).join(', ')
+                filterIds.map((i) => `.logline[data-from='${i}']${fFSMIdSel}, .logline[data-to='${i}']${fFSMIdSel}`).join(', ')
             :
-                `.logline${fKeySel}`
+                `.logline${fFSMIdSel}`
 
         __(fIdsSel).forEach((e) => e.style.display = 'block')
-        __(`.moon${fKeySel}`).forEach((e) => e.style.display = 'inline-block')
+        __(`.moon${fFSMIdSel}`).forEach((e) => e.style.display = 'inline-block')
 
         // init filter section
         while (_('#filter-content').firstChild) { _('#filter-content').removeChild(_('#filter-content').firstChild) }
         _('#filter-content').innerHTML = "<span>Showing only:<span>";
-        if (filterKey) addFilteringKey(filterKey, _('#filter-content'), true)
+        if (filterFSMId) addFilteringFSMId(filterFSMId, _('#filter-content'), true)
         filterIds.forEach((i) => { addFilteringID(i, _('#filter-content'), true) })
         _('#filter').style.display = 'block'
 
@@ -100,18 +120,18 @@ const updateFilters = () => {
     __('.moon').forEach((e) => e.style.display = 'inline-block')
 }
 
-const addFilteringKey = (key, parent, addListener) => {
-    const rgb = keyToRGBA(key)
+const addFilteringFSMId = (fsmId, parent, addListener) => {
+    const rgb = stringToRGBA(fsmId)
 
-    const filteringKey = document.createElement('span')
-    filteringKey.className = 'filtering-key'
-    filteringKey.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
-    parent.appendChild(filteringKey)
+    const filteringFSMId = document.createElement('span')
+    filteringFSMId.className = 'filtering-fsm-id'
+    filteringFSMId.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
+    parent.appendChild(filteringFSMId)
 
     // filtering listener
     if (addListener) {
-        filteringKey.onclick = function () {
-            filterKey = undefined
+        filteringFSMId.onclick = function () {
+            filterFSMId = undefined
             parent.removeChild(this)
             updateFilters()
         }
@@ -120,8 +140,8 @@ const addFilteringKey = (key, parent, addListener) => {
     // Create tooltip
     const tooltip = document.createElement('span')
     tooltip.className = 'tooltip'
-    tooltip.innerHTML = textLimit(key, 20)
-    filteringKey.appendChild(tooltip)
+    tooltip.innerHTML = textLimit(fsmId, 20)
+    filteringFSMId.appendChild(tooltip)
 }
 
 const addFilteringID = (id, parent, addListener) => {
@@ -147,13 +167,13 @@ const addFilteringID = (id, parent, addListener) => {
 const run = (timeout) => {
     if (typeof config !== 'undefined') {
         if (brokersOverride) {
-            config.serverConfig.brokers = brokersOverride
+            config.kafka.brokers = brokersOverride
             log(`Overriding brokers to [${brokersOverride}]`)
         }
-        if (grep) {
-            config.serverConfig.grep = grep
-            config.serverConfig.offset = String(offset)
-            log(`Grepping messages for [${grep}], with an offset of [${offset}]`)
+        if (fsmId) {
+            config.fsmId = fsmId
+            config.kafka.offset = String(offset)
+            log(`Grepping messages for [${fsmId}], with an offset of [${offset}]`)
         }
         doRun()
     } else if (timeout > 0) {
@@ -187,7 +207,18 @@ const showNextUiEvent = () => {
         return
     }
 
-    const event = eventQueue.shift()
+    let event = eventQueue.shift()
+
+    while (typeof event !== 'undefined' && event.eventType != 'message') {
+        if (event.text) {
+            log(event.text, event.color, event.sourceId, event.targetId, event.json, event.fsmId)
+        }
+        event = eventQueue.shift()
+    }
+
+    if (eventQueue.length == 0) {
+        return
+    }
 
     if (event.eventType == 'message') {
         const safeSourceId = safeId(event.sourceId)
@@ -197,15 +228,11 @@ const showNextUiEvent = () => {
             _(`[id='component_${safeSourceId}']`),
             _(`[id='component_${safeTargetId}']`),
             event.quantity ? event.quantity : 1,
-            event.key
+            event.fsmId
         )
     }
-    if (typeof event.logs !== 'undefined') {
-        for (let i in event.logs) {
-            log(event.logs[i].text, event.logs[i].color, event.sourceId, event.targetId, i == 0 ? event.json : undefined, event.key)
-        }
-    } else if (event.text) {
-        log(event.text, event.color, event.sourceId, event.targetId, event.json, event.key)
+    if (event.text) {
+        log(event.text, event.color, event.sourceId, event.targetId, event.json, event.fsmId, event.aggregate)
     }
 
     // Save enqueued animation into event log; keep it <= 100 events
@@ -224,7 +251,7 @@ const openWebSocket = () => {
     ws.onopen = (event) => {
         log(`WebSocket open on [${wsUrl}]!`, 'happy')
         try {
-            ws.send(JSON.stringify(config.serverConfig))
+            ws.send(JSON.stringify(config))
             log("Sent configurations to server successfully!", 'happy')
         } catch(e) {
             log("Server is drunk :( can't send him configurations!", 'error')
@@ -234,23 +261,13 @@ const openWebSocket = () => {
 
     ws.onmessage = (message) => {
         if (!config.documentationMode) {
-            consumedMessages = []
-            if (message.data.trim()) {
-                lines = cleanArray(message.data.trim().split(/\n/))
-                for (i in lines) {
-                    try {
-                        maybeResult = JSON.parse(lines[i])
-
-                        consumedMessages.push(maybeResult)
-                    } catch (e) {
-                        console.log(`Couldn't parse this as JSON: ${lines[i]}`, "\nError: ", e)
-                    }
-                }
+            try{
+                processUiEvents(JSON.parse(message.data))
+            } catch (e) {
+                console.log(`Couldn't parse this as JSON: ${message.data}`, "\nError: ", e)
             }
-
-            processUiEvents(consumedMessagesToEvents(consumedMessages))
         } else if (!config.hideIgnoredMessages) {
-            console.log('Ignored incoming message', message)
+            console.log('Ignored incoming message', message.data)
             log('Ignored incoming message.', 'debug')
         }
     }
@@ -259,63 +276,12 @@ const openWebSocket = () => {
     ws.onerror = (event) => log(`WebSocket had error! ${event}`, 'error')
 }
 
-const processUiEvents = (events) => { for (event of events) {
-    if (config.documentationMode)
+const processUiEvents = (events) => {
+    for (event of events) {
+        if (!config.documentationMode) {
+            event.quantity = Array.isArray(event.json) ? event.json.length : 1
+        }
         eventQueue.push(event)
-    else
-        aggregateEventOnEventQueue(event)
-} }
-
-const aggregateEventOnEventQueue = (event) => {
-    const indexOfSimilarMessage = (event, eventQueue) => {
-        let index = undefined
-        eventQueue.forEach((v, i) => {
-            if (v.sourceId == event.sourceId && v.targetId == event.targetId && v.key == event.key)
-                index = i
-        })
-        return index
-    }
-
-    // if it's an A -> B type of event
-    if (event.eventType == 'message') {
-        const i = indexOfSimilarMessage(event, eventQueue)
-
-        // if a message from the same A -> B exists, +1 its quantity and add its log if present
-        if (typeof i !== 'undefined') {
-            eventQueue[i].quantity = eventQueue[i].quantity ? eventQueue[i].quantity + 1 : 2
-            if (typeof event.text !== 'undefined') eventQueue[i].logs.push(event)
-
-        // if it's the first message from A -> B, add it to the queue and start a collection of logs for it
-        } else {
-            let aggregatedEvent = event
-            if (typeof event.text !== 'undefined') {
-                if (typeof event.logs !== 'undefined') {
-                    aggregatedEvent.logs.push(event)
-                } else {
-                    aggregatedEvent.logs = [event]
-                }
-            }
-            eventQueue.push(aggregatedEvent)
-        }
-
-    // if it's a log type of event
-    } else if (event.eventType == 'log') {
-        let lastId = eventQueue.length - 1
-
-        // if the last event on the queue is a log event, add this log to it
-        if (eventQueue[lastId] && eventQueue[lastId].eventType == 'log') {
-            eventQueue[lastId].logs.push(event)
-
-        // otherwise, push a new event and start a collection of logs for it
-        } else {
-            let aggregatedEvent = event
-            if (typeof event.logs !== 'undefined') {
-                aggregatedEvent.logs.push(event)
-            } else {
-                aggregatedEvent.logs = [event]
-            }
-            eventQueue.push(aggregatedEvent)
-        }
     }
 }
 
@@ -357,50 +323,6 @@ const refreshDocumentationModeStepCount = () => {
     _('#event-log').style.display = 'block';
     _('#event-log').innerHTML = `${documentationModeIterator}/${config.documentationSteps.length} events`
 }
-
-const consumedMessagesToEvents = (consumedMessages) => {
-    consumedMessages.sort((a, b) => a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0)
-
-    const events = []
-    for (let i in consumedMessages) {
-        if (consumedMessages[i]) {
-            const newEvents = config.logic(consumedMessages[i], log, state)
-            if (newEvents.length == 0 && !config.hideIgnoredMessages) {
-                log(`Ignoring event:<br/><pre>` + syntaxHighlight(JSON.parse(consumedMessages[i].value)) + '</pre>', 'debug')
-            }
-            for (let j in newEvents) {
-                try {
-                    newEvents[j].json = JSON.parse(consumedMessages[i].value) // json specific
-                } finally {}
-
-                // https://github.com/MarianoGappa/flowbro/issues/21
-                updateAliases(newEvents[j], keyAliases)
-                key = newEvents[j].key ? newEvents[j].key : consumedMessages[i].key
-                newEvents[j].key = resolveKeyAliases(key, keyAliases)
-
-                events.push(newEvents[j])
-            }
-        }
-    }
-    return events
-}
-
-// https://github.com/MarianoGappa/flowbro/issues/21
-const updateAliases = (event, keyAliases) => {
-    if (event.keyAlias && event.key) {
-        key = event.key
-        if (keyAliases[key]) {
-            key = keyAliases[key]
-        }
-
-        keyAliases[event.keyAlias] = key
-    }
-}
-// https://github.com/MarianoGappa/flowbro/issues/21
-const resolveKeyAliases = (key, keyAliases) => {
-    return key && keyAliases[key] ? keyAliases[key] : key
-}
-
 
 const loadComponents = (config) => {
     let colorRing = colorGenerator(config.colourPalette)
@@ -467,7 +389,7 @@ const loadComponents = (config) => {
     }
 }
 
-const animateFromTo = (source, target, quantity, key) => {
+const animateFromTo = (source, target, quantity, fsmId) => {
     const element = document.createElement('div')
     element.id = 'anim_' + guid()
     element.className = 'detached message'
@@ -479,8 +401,8 @@ const animateFromTo = (source, target, quantity, key) => {
     element.style.zIndex = -1
 
     var rgb = undefined
-    if (config.colorBasedOnKey && typeof key !== 'undefined' && key !== '') {
-        rgb = keyToRGBA(key)
+    if (typeof fsmId !== 'undefined' && fsmId !== '') {
+        rgb = stringToRGBA(fsmId)
     }
 
     if (quantity > 1) {
@@ -508,23 +430,27 @@ const animateFromTo = (source, target, quantity, key) => {
 
     element.className = `${styleId} detached message`
 
-    const postAnimation = (element, style, target, rgb, key) => () => {
+    const postAnimation = (element, style, target, rgb, fsmId) => () => {
         element.parentNode.removeChild(element)
         style.parentNode.removeChild(style)
         if (rgb) {
-            addMoon(source, rgb, key)
-            addMoon(target, rgb, key)
+            addMoon(source, rgb, fsmId, 0)
+            addMoon(target, rgb, fsmId, quantity)
         }
     }
 
-    window.setTimeout(postAnimation(element, style, target, rgb, key), length)
+    window.setTimeout(postAnimation(element, style, target, rgb, fsmId), length)
 }
 
-const addMoon = (target, rgb, key) => {
-    const moonId = target.id + "_" + key
+const addMoon = (target, rgb, fsmId, quantity) => {
+    const moonId = target.id + "_" + fsmId
     const moonHolderId = target.id + "_moon_holder"
 
     if (_('#' + moonId)) {
+        maybeCurrentQuantity = parseInt(_('#' + moonId + "_counter").innerHTML)
+        newQuantity = maybeCurrentQuantity ? maybeCurrentQuantity + quantity : quantity
+        _('#' + moonId + "_counter").innerHTML = newQuantity
+        _('#' + moonId + "_counter").style.display = newQuantity <= 1 ? 'none' : 'inline-block'
         return
     }
 
@@ -533,24 +459,33 @@ const addMoon = (target, rgb, key) => {
     moon.id = moonId
     moon.className = 'moon'
     moon.style.background = `linear-gradient(${rgb}, ${rgb}), url(images/message.gif)`
-    moon.dataset.key = key
+    moon.dataset.fsmId = fsmId
     moon.dataset.to = target.id
     moon.dataset.clicked = -1
 
     // Hide moon if currently filtered out
-    if (filterKey && filterKey != key) {
+    if (filterFSMId && filterFSMId != fsmId) {
         moon.style.display = 'none'
     }
 
     _('#' + moonHolderId).appendChild(moon)
 
+    // moon counter
+    const moonCounter = document.createElement('span')
+    moonCounter.id = moonId + "_counter"
+    moonCounter.className = 'moon_counter'
+    _('#' + moonId).appendChild(moonCounter)
+    _('#' + moonId + "_counter").innerHTML = quantity ? quantity : 0
+    moonCounter.style.display = quantity <= 1 ? 'none' : 'inline-block'
+
+
     // filtering listener
     moon.onclick = function () {
         moon.dataset.clicked = moon.dataset.clicked  * -1
-        if (moon.dataset.clicked == 1 && filterKey != key) {
-            filterKey = key
+        if (moon.dataset.clicked == 1 && filterFSMId != fsmId) {
+            filterFSMId = fsmId
         } else {
-            filterKey = undefined
+            filterFSMId = undefined
         }
         updateFilters()
     };
@@ -558,7 +493,7 @@ const addMoon = (target, rgb, key) => {
     // Create tooltip
     const tooltip = document.createElement('span')
     tooltip.className = 'tooltip'
-    tooltip.innerHTML = textLimit(key, 20)
+    tooltip.innerHTML = textLimit(fsmId, 20)
     _('#' + moonId).appendChild(tooltip)
 
     // Limit to 4 moons
@@ -612,11 +547,11 @@ if (offsetParam) {
     offset = offsetParam
 }
 
-// Grep query param
-let grep = undefined
-const grepParam = getParameterByName('grep')
-if (grepParam) {
-    grep = grepParam
+// FSMId query param
+let fsmId = undefined
+const fsmIdParam = getParameterByName('fsmId')
+if (fsmIdParam) {
+    fsmId = fsmIdParam
     if (!offsetParam) {
         offset = -1000
     }
