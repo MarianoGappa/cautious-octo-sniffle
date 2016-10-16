@@ -31,6 +31,7 @@ type event struct {
 	FSMIdAlias string                   `json:"fsmIdAlias"`
 	JSON       []map[string]interface{} `json:"json"`
 	Aggregate  bool                     `json:"aggregate"`
+	Color      string                   `json:"color"`
 }
 
 type pattern struct {

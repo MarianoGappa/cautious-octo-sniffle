@@ -321,7 +321,7 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 		case cMsg := <-c:
 			m, err := newMessage(*cMsg)
 			if err != nil {
-				log.Printf("Could not parse %v into message", err)
+				sendError(fmt.Sprintf("Could not parse %v into message", err), ws)
 			}
 			if m.Timestamp.UnixNano() <= 0 {
 				m.Timestamp = time.Now()
@@ -353,7 +353,7 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 				if buffer[0].Timestamp.UnixNano()/1000000 <= currentTimestamp {
 					evs, err := processMessage(buffer[0], rules, fsmIdAliases, &incompleteEvents, globalFSMId)
 					if err != nil {
-						log.Printf("Error while processing message: err=%v", err)
+						sendError(fmt.Sprintf("Error while processing message: err=%v", err), ws)
 						break
 					}
 					events = append(events, evs...)
@@ -373,7 +373,7 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 
 			byt, err := json.Marshal(events)
 			if err != nil {
-				log.Printf("Error while marshalling events: err=%v\n", err)
+				sendError(fmt.Sprintf("Error while marshalling events: err=%v\n", err), ws)
 				continue
 			}
 
