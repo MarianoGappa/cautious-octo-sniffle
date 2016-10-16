@@ -23,14 +23,14 @@ type kafka struct {
 }
 
 type event struct {
-	EventType  string                 `json:"eventType"`
-	SourceId   string                 `json:"sourceId"`
-	TargetId   string                 `json:"targetId"`
-	Text       string                 `json:"text"`
-	FSMId      string                 `json:"fsmId"`
-	FSMIdAlias string                 `json:"fsmIdAlias"`
-	JSON       map[string]interface{} `json:"json"`
-	Key        string                 `json:"key"`
+	EventType  string                   `json:"eventType"`
+	SourceId   string                   `json:"sourceId"`
+	TargetId   string                   `json:"targetId"`
+	Text       string                   `json:"text"`
+	FSMId      string                   `json:"fsmId"`
+	FSMIdAlias string                   `json:"fsmIdAlias"`
+	JSON       []map[string]interface{} `json:"json"`
+	Aggregate  bool                     `json:"aggregate"`
 }
 
 type pattern struct {

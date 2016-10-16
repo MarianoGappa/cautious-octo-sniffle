@@ -6,7 +6,7 @@ import (
 	"text/template"
 )
 
-func processMessage(m message, rules []rule, fsmIdAliases map[string]string, globalFSMId string) ([]event, error) {
+func processMessage(m message, rules []rule, fsmIdAliases map[string]string, incompleteEvents *[]event, globalFSMId string) ([]event, error) {
 	events := []event{}
 	for _, r := range rules {
 		pass := true
@@ -56,26 +56,54 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, glo
 			}
 
 			fsmId := string(bFSMId)
+			fsmIdAlias := string(bFSMIdAlias)
 			if fa, ok := fsmIdAliases[fsmId]; len(fa) > 0 && ok {
 				fsmId = fa
 			}
-			if len(bFSMIdAlias) > 0 && len(bFSMId) > 0 {
-				fsmIdAliases[string(bFSMIdAlias)] = fsmId
+			if _, ok := fsmIdAliases[fsmIdAlias]; !ok && len(fsmIdAlias) > 0 && len(fsmId) > 0 { // if new id/alias pair
+				fsmIdAliases[fsmIdAlias] = fsmId // save new alias definition
+
+				events = append(events, event{ // ui will need to resolve aliases too
+					EventType:  "alias",
+					FSMId:      fsmId,
+					FSMIdAlias: fsmIdAlias,
+				})
+
+				for i, e := range *incompleteEvents { // fill in fsmIds on incomplete events
+					if e.FSMIdAlias == fsmIdAlias {
+						(*incompleteEvents)[i].FSMId = fsmId
+						(*incompleteEvents)[i].FSMIdAlias = ""
+					}
+				}
+			}
+
+			if len(fsmId) == 0 && len(fsmIdAlias) > 0 {
+				*incompleteEvents = append(*incompleteEvents, event{
+					EventType:  string(bEventType),
+					FSMIdAlias: fsmIdAlias,
+					SourceId:   string(bSourceId),
+					TargetId:   string(bTargetId),
+					Text:       string(bText),
+					JSON:       []map[string]interface{}{m.Value},
+					Aggregate:  e.Aggregate,
+				})
+				continue
 			}
 
 			if len(globalFSMId) > 0 && globalFSMId != fsmId {
 				continue
 			}
 
-			events = append(events, event{
+			newE := event{
 				EventType: string(bEventType),
 				FSMId:     fsmId,
 				SourceId:  string(bSourceId),
 				TargetId:  string(bTargetId),
 				Text:      string(bText),
-				JSON:      m.Value,
-				Key:       m.Key,
-			})
+				JSON:      []map[string]interface{}{m.Value},
+			}
+
+			events = aggregate(events, newE, e.Aggregate, globalFSMId)
 		}
 	}
 	return events, nil
@@ -93,4 +121,20 @@ func parseTempl(s string, m message) ([]byte, error) {
 	}
 
 	return b.Bytes(), nil
+}
+
+func aggregate(events []event, e event, aggregate bool, globalFSMId string) []event {
+	if len(globalFSMId) > 0 && globalFSMId != e.FSMId {
+		return events
+	}
+	if !aggregate {
+		return append(events, e)
+	}
+	for _, ev := range events {
+		if ev.FSMId == e.FSMId && ev.SourceId == e.SourceId && ev.TargetId == e.TargetId {
+			ev.JSON = append(ev.JSON, e.JSON...)
+			return events
+		}
+	}
+	return append(events, e)
 }

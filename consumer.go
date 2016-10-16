@@ -348,9 +348,10 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 			tick = ticker.C
 		case <-tick:
 			events := []event{}
+			incompleteEvents := []event{}
 			for i := 0; len(buffer) > 0 && i < 1000; i++ {
 				if buffer[0].Timestamp.UnixNano()/1000000 <= currentTimestamp {
-					evs, err := processMessage(buffer[0], rules, fsmIdAliases, globalFSMId)
+					evs, err := processMessage(buffer[0], rules, fsmIdAliases, &incompleteEvents, globalFSMId)
 					if err != nil {
 						log.Printf("Error while processing message: err=%v", err)
 						break
@@ -360,6 +361,10 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 				} else {
 					break
 				}
+			}
+
+			for _, ie := range incompleteEvents {
+				events = aggregate(events, ie, ie.Aggregate, globalFSMId)
 			}
 
 			if len(events) == 0 {
