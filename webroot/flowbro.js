@@ -198,12 +198,17 @@ const showNextUiEvent = () => {
         return
     }
 
-    const event = eventQueue.shift()
-    while (event.eventType != 'message') {
+    let event = eventQueue.shift()
+
+    while (typeof event !== 'undefined' && event.eventType != 'message') {
         if (event.text) {
             log(event.text, event.color, event.sourceId, event.targetId, event.json, event.fsmId)
         }
         event = eventQueue.shift()
+    }
+
+    if (eventQueue.length == 0) {
+        return
     }
 
     if (event.eventType == 'message') {
@@ -246,7 +251,6 @@ const openWebSocket = () => {
     }
 
     ws.onmessage = (message) => {
-        console.log(message.data)
         if (!config.documentationMode) {
             try{
                 processUiEvents(JSON.parse(message.data))
@@ -421,19 +425,24 @@ const animateFromTo = (source, target, quantity, fsmId) => {
         element.parentNode.removeChild(element)
         style.parentNode.removeChild(style)
         if (rgb) {
-            addMoon(source, rgb, fsmId)
-            addMoon(target, rgb, fsmId)
+            addMoon(source, rgb, fsmId, 0)
+            addMoon(target, rgb, fsmId, quantity)
         }
     }
 
     window.setTimeout(postAnimation(element, style, target, rgb, fsmId), length)
 }
 
-const addMoon = (target, rgb, fsmId) => {
+const addMoon = (target, rgb, fsmId, quantity) => {
     const moonId = target.id + "_" + fsmId
     const moonHolderId = target.id + "_moon_holder"
 
     if (_('#' + moonId)) {
+    console.log(parseInt(_('#' + moonId + "_counter").innerHTML))
+        maybeCurrentQuantity = parseInt(_('#' + moonId + "_counter").innerHTML)
+        newQuantity = maybeCurrentQuantity ? maybeCurrentQuantity + quantity : quantity
+        _('#' + moonId + "_counter").innerHTML = newQuantity
+        _('#' + moonId + "_counter").style.display = newQuantity <= 1 ? 'none' : 'inline-block'
         return
     }
 
@@ -452,6 +461,16 @@ const addMoon = (target, rgb, fsmId) => {
     }
 
     _('#' + moonHolderId).appendChild(moon)
+
+    // moon counter
+    const moonCounter = document.createElement('span')
+    moonCounter.id = moonId + "_counter"
+    moonCounter.className = 'moon_counter'
+    _('#' + moonId).appendChild(moonCounter)
+    _('#' + moonId + "_counter").innerHTML = quantity ? quantity : 0
+    moonCounter.style.display = quantity <= 1 ? 'none' : 'inline-block'
+            console.log(quantity)
+
 
     // filtering listener
     moon.onclick = function () {

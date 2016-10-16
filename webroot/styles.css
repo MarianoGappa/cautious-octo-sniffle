@@ -78,6 +78,7 @@ b {
     background-size: 20px 15px !important; /* gradient must be defined on instantiation :( */
     margin-right: 3px;
     margin-bottom: 3px;
+    text-align: center;
 }
 .moon:active, .filtering-fsm-id:active {
     transition: all .1s linear;
@@ -85,6 +86,12 @@ b {
 }
 .moon:hover .tooltip, .filtering-fsm-id:hover .tooltip {
     display: inline;
+}
+.moon_counter {
+    font-weight: bolder;
+    font-size: 8px;
+    padding-top: 3px;
+    text-shadow: 1px 2px 1px black;
 }
 .tooltip {
     display: none;
