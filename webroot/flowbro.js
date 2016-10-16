@@ -21,7 +21,7 @@ const init = (configFile) => {
 const log = (message, _color, from, to, json, fsmId, aggregate) => {
     const fromId = safeId('component_' + from)
     const toId = safeId('component_' + to)
-    const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined'
+    const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined' && from && to
 
     quantity = 1
     if (Array.isArray(json)) {

@@ -312,6 +312,7 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 
 	buffer := []message{}
 	fsmIdAliases := map[string]string{}
+	sendSuccess("Starting to send messages!", ws)
 
 	for {
 		select {
