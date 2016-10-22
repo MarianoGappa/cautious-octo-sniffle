@@ -124,7 +124,7 @@ func setupClusters(clusters map[string]*cluster, utils iKafkaUtils) []error {
 
 func setupPartitionConsumers(conf *config) ([]<-chan *sarama.ConsumerMessage, map[string]*cluster, bool) {
 	clusters := make(map[string]*cluster)
-	for _, c := range conf.consumers {
+	for _, c := range conf.Consumers {
 		b := strings.Join(c.brokers, ",")
 		if _, exists := clusters[b]; !exists {
 			clusters[b] = &cluster{brokers: c.brokers}
@@ -147,7 +147,7 @@ func setupPartitionConsumers(conf *config) ([]<-chan *sarama.ConsumerMessage, ma
 
 	var wg sync.WaitGroup
 
-	for _, consumerConf := range conf.consumers {
+	for _, consumerConf := range conf.Consumers {
 		gowg(func(consumerConf consumerConfig) func() {
 			return func() {
 				topic, brokers, partition := consumerConf.topic, consumerConf.brokers, consumerConf.partition
@@ -179,6 +179,7 @@ func setupPartitionConsumers(conf *config) ([]<-chan *sarama.ConsumerMessage, ma
 					}
 
 					partitionConsumer, err := consumer.ConsumePartition(topic, int32(partition), offset)
+
 					if err != nil {
 						errL.Lock()
 						errors = append(errors, fmt.Errorf("Failed to consume partition %v err=%v\n", partition, err))
@@ -270,7 +271,7 @@ func resolveOffset(configOffset string, brokers []string, topic string, partitio
 	return 0, fmt.Errorf("Invalid value for consumer offset")
 }
 
-func demuxMessages(pc []<-chan *sarama.ConsumerMessage, q chan struct{}) chan *sarama.ConsumerMessage {
+func demuxMessages(pc []<-chan *sarama.ConsumerMessage) chan *sarama.ConsumerMessage {
 	c := make(chan *sarama.ConsumerMessage)
 	for _, p := range pc {
 		go func(p <-chan *sarama.ConsumerMessage) {
@@ -278,8 +279,6 @@ func demuxMessages(pc []<-chan *sarama.ConsumerMessage, q chan struct{}) chan *s
 				select {
 				case msg := <-p:
 					c <- msg
-				case <-q:
-					return
 				}
 			}
 		}(p)
@@ -307,7 +306,7 @@ func (t timeNow) Unix() int64 {
 	return time.Now().Unix()
 }
 
-func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, q chan struct{}, sender iSender, timeNow iTimeNow, rules []rule, globalFSMId string) {
+func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, sender iSender, timeNow iTimeNow, rules []rule, globalFSMId string) {
 	ticker := time.NewTicker(time.Millisecond * 100)
 
 	buffer := []message{}
@@ -365,9 +364,6 @@ func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage
 				log.Printf("Error while trying to send to WebSocket: err=%v\n", err)
 				return
 			}
-		case <-q:
-			log.Println("Received quit signal")
-			return
 		}
 	}
 }

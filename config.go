@@ -58,7 +58,7 @@ type consumerConfig struct {
 }
 
 type config struct {
-	consumers []consumerConfig `json:"consumers"`
+	Consumers []consumerConfig `json:"consumers"`
 }
 
 func processConfig(configJSON *configJSON) (*config, error) {
@@ -98,7 +98,7 @@ func processConfig(configJSON *configJSON) (*config, error) {
 		} else {
 			consumer.partition = -1
 		}
-		config.consumers = append(config.consumers, consumer)
+		config.Consumers = append(config.Consumers, consumer)
 	}
 
 	return config, nil
