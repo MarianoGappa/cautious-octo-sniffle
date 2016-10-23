@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -13,14 +12,6 @@ import (
 	"github.com/Shopify/sarama"
 	"golang.org/x/net/websocket"
 )
-
-func gowg(f func(), wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		f()
-	}(wg)
-}
 
 type message struct {
 	Key       string                 `json:"key"`
@@ -32,11 +23,29 @@ type message struct {
 }
 
 type cluster struct {
-	brokers            []string
-	consumer           sarama.Consumer
-	client             sarama.Client
+	brokers  []string
+	consumer sarama.Consumer
+	client   sarama.Client
+
 	partitionConsumers []sarama.PartitionConsumer
-	pcL                sync.Mutex
+	pcLock             sync.Mutex
+
+	chs     []<-chan *sarama.ConsumerMessage
+	chsLock sync.Mutex
+
+	es errorlist
+}
+
+func (c *cluster) addPartitionConsumer(pc sarama.PartitionConsumer) {
+	c.pcLock.Lock()
+	c.partitionConsumers = append(c.partitionConsumers, pc)
+	c.pcLock.Unlock()
+}
+
+func (c *cluster) addCh(ch <-chan *sarama.ConsumerMessage) {
+	c.chsLock.Lock()
+	c.chs = append(c.chs, ch)
+	c.chsLock.Unlock()
 }
 
 func (c *cluster) close() {
@@ -66,182 +75,84 @@ func (c *cluster) close() {
 	log.Printf("Finished trying to close cluster with brokers %v", c.brokers)
 }
 
-func closeAll(clusters map[string]*cluster) {
-	log.Printf("Trying to close all clusters")
-	for _, c := range clusters {
-		c.close()
+func (c *cluster) addConsumer(conf consumerConfig) {
+	topic, brokers, partition := conf.topic, conf.brokers, conf.partition
+	client, consumer := c.client, c.consumer
+
+	partitions, err := resolvePartitions(topic, partition, consumer)
+	if err != nil {
+		c.es.add(err.Error())
+		return
 	}
-	log.Printf("Finished trying to close all clusters")
-}
 
-type iKafkaUtils interface {
-	newClient(brokers []string) (sarama.Client, error)
-	newConsumerFromClient(client sarama.Client) (sarama.Consumer, error)
-}
-
-type kafkaUtils struct{}
-
-func (k kafkaUtils) newClient(brokers []string) (sarama.Client, error) {
-	return sarama.NewClient(brokers, nil)
-}
-
-func (k kafkaUtils) newConsumerFromClient(client sarama.Client) (sarama.Consumer, error) {
-	return sarama.NewConsumerFromClient(client)
-}
-
-func setupClusters(clusters map[string]*cluster, utils iKafkaUtils) []error {
-	errors := []error{}
-	var errL sync.Mutex
-
-	var wg sync.WaitGroup
-
-	for b := range clusters {
-		gowg(func(b string) func() {
-			return func() {
-				c := clusters[b]
-				log.Printf("Adding client+consumer for cluster with brokers %v", c.brokers)
-				client, err := utils.newClient(c.brokers)
-				if err != nil {
-					errL.Lock()
-					errors = append(errors, fmt.Errorf("Error creating client. err=%v", err))
-					errL.Unlock()
-				}
-				consumer, err := utils.newConsumerFromClient(client)
-				if err != nil {
-					errL.Lock()
-					errors = append(errors, fmt.Errorf("Error creating consumer. err=%v", err))
-					errL.Unlock()
-				}
-				c.client = client
-				c.consumer = consumer
-			}
-		}(b), &wg)
-	}
-	wg.Wait()
-
-	return errors
-}
-
-func setupPartitionConsumers(conf *config) ([]<-chan *sarama.ConsumerMessage, map[string]*cluster, bool) {
-	clusters := make(map[string]*cluster)
-	for _, c := range conf.Consumers {
-		b := strings.Join(c.brokers, ",")
-		if _, exists := clusters[b]; !exists {
-			clusters[b] = &cluster{brokers: c.brokers}
+	for _, partition := range partitions {
+		offset, err := resolveOffset(conf.offset, topic, partition, client)
+		if err != nil {
+			c.es.add(fmt.Sprintf("Could not resolve offset for %v, %v, %v. err=%v", brokers, topic, partition, err))
+			return
 		}
-	}
 
-	errors := setupClusters(clusters, kafkaUtils{})
-	var errL sync.Mutex
-	if len(errors) > 0 {
-		log.Printf("%v error(s) while setting up consumers:", len(errors))
-		for i, e := range errors {
-			log.Printf("Error #%v: %v", i, e)
+		partitionConsumer, err := consumer.ConsumePartition(topic, int32(partition), offset)
+		if err != nil {
+			c.es.add(fmt.Sprintf("Failed to consume partition %v err=%v\n", partition, err))
+			return
 		}
-		closeAll(clusters)
-		return nil, nil, false
+
+		c.addPartitionConsumer(partitionConsumer)
+		c.addCh(partitionConsumer.Messages())
+		log.Printf("Consuming topic [%v], partition [%v] from offset [%v]", topic, partition, offset)
 	}
-
-	partitionConsumerChans := []<-chan *sarama.ConsumerMessage{}
-	var pccL sync.Mutex
-
-	var wg sync.WaitGroup
-
-	for _, consumerConf := range conf.Consumers {
-		gowg(func(consumerConf consumerConfig) func() {
-			return func() {
-				topic, brokers, partition := consumerConf.topic, consumerConf.brokers, consumerConf.partition
-				brokStr := strings.Join(brokers, ",")
-				cluster := clusters[brokStr]
-				client, consumer, pcL := cluster.client, cluster.consumer, cluster.pcL
-
-				var partitions []int32
-				if partition == -1 {
-					var err error
-					partitions, err = consumer.Partitions(topic)
-					if err != nil {
-						errL.Lock()
-						errors = append(errors, fmt.Errorf("Error fetching partitions for topic %v. err=%v", topic, err))
-						errL.Unlock()
-						return
-					}
-				} else {
-					partitions = append(partitions, int32(partition))
-				}
-
-				for _, partition := range partitions {
-					offset, err := resolveOffset(consumerConf.offset, brokers, topic, partition, client)
-					if err != nil {
-						errL.Lock()
-						errors = append(errors, fmt.Errorf("Could not resolve offset for %v, %v, %v. err=%v", brokers, topic, partition, err))
-						errL.Unlock()
-						return
-					}
-
-					partitionConsumer, err := consumer.ConsumePartition(topic, int32(partition), offset)
-
-					if err != nil {
-						errL.Lock()
-						errors = append(errors, fmt.Errorf("Failed to consume partition %v err=%v\n", partition, err))
-						errL.Unlock()
-						return
-					}
-
-					pcL.Lock()
-					cluster.partitionConsumers = append(cluster.partitionConsumers, partitionConsumer)
-					pcL.Unlock()
-					pccL.Lock()
-					partitionConsumerChans = append(partitionConsumerChans, partitionConsumer.Messages())
-					pccL.Unlock()
-				}
-				log.Printf("Added %v partition consumer(s) for topic [%v]", len(partitions), topic)
-			}
-		}(consumerConf), &wg)
-	}
-
-	wg.Wait()
-
-	if len(errors) > 0 {
-		log.Printf("%v error(s) while setting up partition consumers:", len(errors))
-		for i, e := range errors {
-			log.Printf("Error #%v: %v", i, e)
-		}
-		closeAll(clusters)
-		return nil, nil, false
-	}
-
-	log.Println("Successfully finished setting up partition consumers. Ready to consume, bro!")
-	return partitionConsumerChans, clusters, true
 }
 
-type iClient interface {
-	GetOffset(string, int32, int64) (int64, error)
-	Close() error
-}
+func setupCluster(conf *config) cluster {
+	c := cluster{brokers: conf.brokers}
 
-type client struct{}
-
-func (c client) GetOffset(topic string, partition int32, time int64) (int64, error) {
-	return c.GetOffset(topic, partition, time)
-}
-
-func (c client) Close() error {
-	return c.Close()
-}
-
-type iClientCreator interface {
-	NewClient([]string) (iClient, error)
-}
-
-type clientCreator struct{}
-
-func (s clientCreator) NewClient(brokers []string) (iClient, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Version = sarama.V0_10_0_0
-	return sarama.NewClient(brokers, saramaConfig)
+	client, err := sarama.NewClient(c.brokers, saramaConfig)
+	if err != nil {
+		c.es.add(fmt.Sprintf("Error creating client. err=%v", err))
+		return c
+	}
+
+	consumer, err := sarama.NewConsumerFromClient(client)
+	if err != nil {
+		c.es.add(fmt.Sprintf("Error creating consumer. err=%v", err))
+		return c
+	}
+
+	c.client = client
+	c.consumer = consumer
+
+	var wg sync.WaitGroup
+	for _, consumerConf := range conf.consumers {
+		wg.Add(1)
+		go func(consumerConf consumerConfig, c *cluster, wg *sync.WaitGroup) {
+			defer wg.Done()
+			c.addConsumer(consumerConf)
+		}(consumerConf, &c, &wg)
+	}
+	wg.Wait()
+
+	return c
 }
 
-func resolveOffset(configOffset string, brokers []string, topic string, partition int32, client sarama.Client) (int64, error) {
+func resolvePartitions(topic string, partition int, consumer sarama.Consumer) ([]int32, error) {
+	var partitions []int32
+	if partition == -1 {
+		var err error
+
+		partitions, err = consumer.Partitions(topic)
+		if err != nil {
+			return partitions, fmt.Errorf("Error fetching partitions for topic %v. err=%v", topic, err)
+		}
+	} else {
+		partitions = append(partitions, int32(partition))
+	}
+	return partitions, nil
+}
+
+func resolveOffset(configOffset string, topic string, partition int32, client sarama.Client) (int64, error) {
 	if configOffset == "oldest" {
 		return sarama.OffsetOldest, nil
 	} else if configOffset == "newest" {
@@ -271,7 +182,7 @@ func resolveOffset(configOffset string, brokers []string, topic string, partitio
 	return 0, fmt.Errorf("Invalid value for consumer offset")
 }
 
-func demuxMessages(pc []<-chan *sarama.ConsumerMessage) chan *sarama.ConsumerMessage {
+func joinMessages(pc []<-chan *sarama.ConsumerMessage) chan *sarama.ConsumerMessage {
 	c := make(chan *sarama.ConsumerMessage)
 	for _, p := range pc {
 		go func(p <-chan *sarama.ConsumerMessage) {
@@ -296,17 +207,7 @@ func (s sender) Send(ws *websocket.Conn, msg string) error {
 	return websocket.Message.Send(ws, msg)
 }
 
-type iTimeNow interface {
-	Unix() int64
-}
-
-type timeNow struct{}
-
-func (t timeNow) Unix() int64 {
-	return time.Now().Unix()
-}
-
-func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, sender iSender, timeNow iTimeNow, rules []rule, globalFSMId string) {
+func sendMessagesToWsBlocking(ws *websocket.Conn, c chan *sarama.ConsumerMessage, sender iSender, rules []rule, globalFSMId string) {
 	ticker := time.NewTicker(time.Millisecond * 100)
 
 	buffer := []message{}

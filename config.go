@@ -58,13 +58,13 @@ type consumerConfig struct {
 }
 
 type config struct {
-	Consumers []consumerConfig `json:"consumers"`
+	consumers []consumerConfig
+	brokers   []string
 }
 
 func processConfig(configJSON *configJSON) (*config, error) {
-	config := &config{}
+	config := &config{brokers: strings.Split(configJSON.Kafka.Brokers, ",")}
 
-	globalBrokers := configJSON.Kafka.Brokers
 	globalOffset := configJSON.Kafka.Offset
 	for _, consumerJSON := range configJSON.Kafka.Consumers {
 		consumer := consumerConfig{}
@@ -73,15 +73,7 @@ func processConfig(configJSON *configJSON) (*config, error) {
 			return config, fmt.Errorf("Please define topic name for your consumer %v", consumerJSON)
 		}
 		consumer.topic = consumerJSON.Topic
-
-		if len(consumerJSON.Brokers) == 0 {
-			if len(globalBrokers) == 0 {
-				return config, fmt.Errorf("No broker information available in %v", consumerJSON)
-			}
-			consumer.brokers = strings.Split(globalBrokers, ",")
-		} else {
-			consumer.brokers = strings.Split(consumerJSON.Brokers, ",")
-		}
+		consumer.brokers = config.brokers
 
 		if len(consumerJSON.Offset) == 0 {
 			if len(globalOffset) > 0 {
@@ -98,7 +90,7 @@ func processConfig(configJSON *configJSON) (*config, error) {
 		} else {
 			consumer.partition = -1
 		}
-		config.Consumers = append(config.Consumers, consumer)
+		config.consumers = append(config.consumers, consumer)
 	}
 
 	return config, nil
