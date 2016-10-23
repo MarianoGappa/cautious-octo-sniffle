@@ -11,6 +11,7 @@ const init = (configFile) => {
         xhr.onreadystatechange = function(){
           if(xhr.status == 200 && xhr.readyState == 4){
             config = JSON.parse(xhr.responseText)
+            config.heartbeatUUID = guid()
             console.log(config)
           }
         }
@@ -254,6 +255,9 @@ const openWebSocket = () => {
         try {
             ws.send(JSON.stringify(config))
             log("Sent configurations to server successfully!", 'happy')
+
+            // send heartbeat every 5 seconds
+            window.setInterval(() => { ws.send(JSON.stringify({uuid: config.heartbeatUUID})) }, 5000)
         } catch(e) {
             log("Server is drunk :( can't send him configurations!", 'error')
             console.log(e)

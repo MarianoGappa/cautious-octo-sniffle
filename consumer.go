@@ -30,12 +30,15 @@ func (s sender) Send(ws *websocket.Conn, msg string) error {
 	return websocket.Message.Send(ws, msg)
 }
 
-func process(ws *websocket.Conn, c chan *sarama.ConsumerMessage, sender iSender, rules []rule, globalFSMId string) {
+func process(ws *websocket.Conn, c chan *sarama.ConsumerMessage, sender iSender, rules []rule, globalFSMId string, uuid string) {
 	ticker := time.NewTicker(time.Millisecond * 100)
 
 	buffer := []message{}
 	fsmIdAliases := map[string]string{}
 	sendSuccess("Starting to send messages!", ws)
+
+	hbCh := make(chan struct{})
+	go processHeartbeats(wsReceiver{ws: ws}, hbCh, uuid, 10*time.Second)
 
 	for {
 		select {
@@ -88,6 +91,9 @@ func process(ws *websocket.Conn, c chan *sarama.ConsumerMessage, sender iSender,
 				log.Printf("Error while trying to send to WebSocket: err=%v\n", err)
 				return
 			}
+		case <-hbCh:
+			sendError("Timing out due to heartbeat not received.", ws)
+			return
 		}
 	}
 }

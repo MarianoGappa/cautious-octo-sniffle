@@ -45,9 +45,10 @@ type rule struct {
 }
 
 type configJSON struct {
-	Rules []rule
-	Kafka kafka
-	FSMId string
+	Rules         []rule `json:"rules"`
+	Kafka         kafka  `json:"kafka"`
+	FSMId         string `json:"fsmId"`
+	HeartbeatUUID string `json:"heartbeatUUID"`
 }
 
 type consumerConfig struct {
