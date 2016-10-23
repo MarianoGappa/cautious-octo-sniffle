@@ -1,7 +1,4 @@
-let documentationModeIterator = 0
 const eventQueue = []
-const eventLog = []
-const state = {}
 var filterFSMId = undefined
 var filterIds = []
 
@@ -200,12 +197,7 @@ const doRun = () => {
 
     window.setInterval(() => showNextUiEvent(), config.eventSeparationIntervalMilliseconds)
 
-    if (!config.documentationMode) {
-        openWebSocket()
-        // _('#rest').innerHTML = '<button onclick="javascript:replayEventLog()">Replay</button><button onclick="javascript:cleanEventLog()">Clear</button>'
-    } else {
-        // _('#rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">Reset</button><button onclick="javascript:mockPoll()">Next</button>'
-    }
+    openWebSocket()
 }
 
 const showNextUiEvent = () => {
@@ -240,14 +232,6 @@ const showNextUiEvent = () => {
     if (event.text) {
         log(event.text, event.color, event)
     }
-
-    // Save enqueued animation into event log; keep it <= 100 events
-    if (!config.documentationMode) {
-        eventLog.push([event])
-        if (eventLog.length > 100)
-            eventLog.shift()
-        _('#event-log').innerHTML = `${eventLog.length} events logged`
-    }
 }
 
 const openWebSocket = () => {
@@ -269,15 +253,10 @@ const openWebSocket = () => {
     }
 
     ws.onmessage = (message) => {
-        if (!config.documentationMode) {
-            try{
-                processUiEvents(JSON.parse(message.data))
-            } catch (e) {
-                console.log(`Couldn't parse this as JSON: ${message.data}`, "\nError: ", e)
-            }
-        } else if (!config.hideIgnoredMessages) {
-            console.log('Ignored incoming message', message.data)
-            log('Ignored incoming message.', 'debug')
+        try{
+            processUiEvents(JSON.parse(message.data))
+        } catch (e) {
+            console.log(`Couldn't parse this as JSON: ${message.data}`, "\nError: ", e)
         }
     }
 
@@ -289,45 +268,6 @@ const processUiEvents = (events) => {
     for (event of events) {
         eventQueue.push(event)
     }
-}
-
-const cleanEventLog = () => { eventLog.length = 0; log('-- Replay event log is now empty --', 'debug'); }
-const replayEventLog = () => {
-    if (eventLog.length > 0) {
-        config.documentationMode = true
-        documentationModeIterator = 0
-        config.documentationSteps = eventLog
-        eventQueue.length = 0
-        refreshDocumentationModeStepCount()
-        log('-- Replay event log mode; ignoring real-time messages --', 'happy')
-        _('#rest').innerHTML = '<button onclick="javascript:resetDocumentationMode()">|&lt;&lt;</button><button onclick="javascript:mockPoll()">&gt;</button><button onclick="javascript:restoreRealTime()">Back</button>'
-    } else {
-        log('-- Replay event log is empty --', 'error')
-    }
-}
-const restoreRealTime = () => {
-    config.documentationSteps.length = 0
-    documentationModeIterator = 0
-    config.documentationMode = false
-    eventLog.length = 0
-    log('-- Back to real-time mode --')
-    _('#rest').innerHTML = '<button onclick="javascript:replayEventLog()">Replay</button><button onclick="javascript:cleanEventLog()">Clear</button>'
-}
-
-const resetDocumentationMode = () => {
-    documentationModeIterator = 0
-    refreshDocumentationModeStepCount()
-    log('-- reset --', 'debug')
-}
-
-const mockPoll = () => {
-    newEvents = config.documentationSteps[documentationModeIterator] ? config.documentationSteps[documentationModeIterator++] : []
-    refreshDocumentationModeStepCount()
-    processUiEvents(newEvents)
-}
-const refreshDocumentationModeStepCount = () => {
-    _('#event-log').style.display = 'block';
-    _('#event-log').innerHTML = `${documentationModeIterator}/${config.documentationSteps.length} events`
 }
 
 const loadComponents = (config) => {
