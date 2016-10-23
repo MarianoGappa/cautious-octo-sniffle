@@ -47,7 +47,7 @@ func TestProcessMessage(t *testing.T) {
 			},
 			fa: map[string]string{},
 			expectedEvents: []event{
-				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}")},
+				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}"), Count: 1},
 			},
 			expectedFa: map[string]string{},
 		},
@@ -72,8 +72,8 @@ func TestProcessMessage(t *testing.T) {
 			},
 			fa: map[string]string{},
 			expectedEvents: []event{
-				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi, B!", FSMId: "456", JSON: newSliceFrom("{}")},
-				{EventType: "message", SourceId: "A", TargetId: "C", Text: "Hi, C!", FSMId: "456", JSON: newSliceFrom("{}")},
+				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi, B!", FSMId: "456", JSON: newSliceFrom("{}"), Count: 1},
+				{EventType: "message", SourceId: "A", TargetId: "C", Text: "Hi, C!", FSMId: "456", JSON: newSliceFrom("{}"), Count: 1},
 			},
 			expectedFa: map[string]string{},
 		},
@@ -94,7 +94,7 @@ func TestProcessMessage(t *testing.T) {
 				},
 			},
 			fa:             map[string]string{},
-			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}")}},
+			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}"), Count: 1}},
 			expectedFa:     map[string]string{},
 		},
 		{
@@ -134,7 +134,7 @@ func TestProcessMessage(t *testing.T) {
 				},
 			},
 			fa:             map[string]string{},
-			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", JSON: newSliceFrom(`{"name":"relevant"}`)}},
+			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", JSON: newSliceFrom(`{"name":"relevant"}`), Count: 1}},
 			expectedFa:     map[string]string{},
 		},
 		{
@@ -154,7 +154,7 @@ func TestProcessMessage(t *testing.T) {
 				},
 			},
 			fa:             map[string]string{},
-			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "666", FSMId: "456", JSON: newSliceFrom(`{"value":666}`)}},
+			expectedEvents: []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "666", FSMId: "456", JSON: newSliceFrom(`{"value":666}`), Count: 1}},
 			expectedFa:     map[string]string{},
 		},
 		{
@@ -178,7 +178,7 @@ func TestProcessMessage(t *testing.T) {
 			fa: map[string]string{},
 			expectedEvents: []event{
 				{EventType: "alias", FSMId: "666", FSMIdAlias: "777"},
-				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", FSMId: "666", JSON: newSliceFrom(`{"primary":666, "secondary":777}`)}},
+				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", FSMId: "666", JSON: newSliceFrom(`{"primary":666, "secondary":777}`), Count: 1}},
 			expectedFa: map[string]string{"777": "666"},
 		},
 		{
@@ -201,7 +201,7 @@ func TestProcessMessage(t *testing.T) {
 			},
 			fa: map[string]string{"777": "666"},
 			expectedEvents: []event{
-				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", FSMId: "666", JSON: newSliceFrom(`{"secondary":777}`)},
+				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi", FSMId: "666", JSON: newSliceFrom(`{"secondary":777}`), Count: 1},
 			},
 			expectedFa: map[string]string{"777": "666"},
 		},
@@ -245,7 +245,7 @@ func TestProcessMessage(t *testing.T) {
 			globalFSMId: "456",
 			fa:          map[string]string{},
 			expectedEvents: []event{
-				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}")},
+				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}"), Count: 1},
 			},
 			expectedFa: map[string]string{},
 		},
@@ -265,15 +265,15 @@ func TestProcessMessage(t *testing.T) {
 					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", FSMIdAlias: "789"}},
 				},
 			},
-			ie:          []event{{EventType: "message", SourceId: "B", TargetId: "C", Text: "Hi!", FSMIdAlias: "789", JSON: newSliceFrom("{}")}},
+			ie:          []event{{EventType: "message", SourceId: "B", TargetId: "C", Text: "Hi!", FSMIdAlias: "789", JSON: newSliceFrom("{}"), Count: 1}},
 			globalFSMId: "456",
 			fa:          map[string]string{},
 			expectedEvents: []event{
 				{EventType: "alias", FSMId: "456", FSMIdAlias: "789"},
-				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}")},
+				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}"), Count: 1},
 			},
 			expectedIncomplete: []event{
-				{EventType: "message", SourceId: "B", TargetId: "C", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}")},
+				{EventType: "message", SourceId: "B", TargetId: "C", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}"), Count: 1},
 			},
 			expectedFa: map[string]string{"789": "456"},
 		},
@@ -293,14 +293,39 @@ func TestProcessMessage(t *testing.T) {
 					Events:   []event{{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi!", FSMId: "456", FSMIdAlias: "789"}},
 				},
 			},
-			ie:          []event{{EventType: "message", SourceId: "B", TargetId: "C", Text: "Hi!", FSMIdAlias: "789", JSON: newSliceFrom("{}")}},
+			ie:          []event{{EventType: "message", SourceId: "B", TargetId: "C", Text: "Hi!", FSMIdAlias: "789", JSON: newSliceFrom("{}"), Count: 1}},
 			globalFSMId: "345",
 			fa:          map[string]string{},
 			expectedEvents: []event{
 				{EventType: "alias", FSMId: "456", FSMIdAlias: "789"},
 			},
-			expectedIncomplete: []event{{EventType: "message", SourceId: "B", TargetId: "C", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}")}},
+			expectedIncomplete: []event{{EventType: "message", SourceId: "B", TargetId: "C", Text: "Hi!", FSMId: "456", JSON: newSliceFrom("{}"), Count: 1}},
 			expectedFa:         map[string]string{"789": "456"},
+		},
+		{
+			name: "no json, and aggregating counts",
+			m: message{
+				Key:       "123",
+				Value:     newValueFrom(`{"alot":"of","stuff":"to","ignore":true}`),
+				Topic:     "topic",
+				Partition: 0,
+				Offset:    213,
+				Timestamp: now,
+			},
+			rs: []rule{
+				{
+					Patterns: []pattern{{Field: "{{.Topic}}", Pattern: "topic"}},
+					Events: []event{
+						{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi, B!", FSMId: "456", Aggregate: true, NoJSON: true},
+						{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi, B again!", FSMId: "456", Aggregate: true, NoJSON: true},
+					},
+				},
+			},
+			fa: map[string]string{},
+			expectedEvents: []event{
+				{EventType: "message", SourceId: "A", TargetId: "B", Text: "Hi, B!", FSMId: "456", JSON: []map[string]interface{}{}, Aggregate: true, Count: 2},
+			},
+			expectedFa: map[string]string{},
 		},
 	}
 

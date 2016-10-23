@@ -32,6 +32,8 @@ type event struct {
 	JSON       []map[string]interface{} `json:"json"`
 	Aggregate  bool                     `json:"aggregate"`
 	Color      string                   `json:"color"`
+	Count      int32                    `json:"count"`
+	NoJSON     bool                     `json:"noJSON,omitempty"`
 }
 
 type pattern struct {

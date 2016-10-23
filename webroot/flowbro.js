@@ -20,21 +20,25 @@ const init = (configFile) => {
     }
 }
 
-const log = (message, _color, from, to, json, fsmId, aggregate) => {
-    const fromId = safeId('component_' + from)
-    const toId = safeId('component_' + to)
-    const isFlyingMessage = typeof from !== 'undefined' && typeof to !== 'undefined' && from && to
+const log = (message, _color, event) => {
+    event = event ? event : {sourceId: '', targetId: '', count: 0, aggregate: false, json: null}
 
-    quantity = 1
-    if (Array.isArray(json)) {
-        quantity = json.length
-        if (quantity == 1) {
-            json = json[0]
+    const fromId = safeId('component_' + event.sourceId)
+    const toId = safeId('component_' + event.targetId)
+    const isFlyingMessage = typeof event.sourceId !== 'undefined' && typeof event.targetId !== 'undefined' && event.sourceId && event.targetId
+
+    quantity = event.count
+
+    if (Array.isArray(event.json)) {
+        if (event.json.length == 1) {
+            event.json = event.json[0]
+        } else if (event.json.length == 0) {
+            event.json = null
         }
     }
 
     const existingSelector = `.logline[data-from='${fromId}'][data-to='${toId}'][data-fsm-id='${fsmId}']`
-    if (aggregate && isFlyingMessage && _(existingSelector)) {
+    if (event.aggregate && isFlyingMessage && _(existingSelector)) {
         const current = parseInt(_(`${existingSelector} .quantity-wrapper`).innerHTML)
         _(`${existingSelector} .quantity-wrapper`).innerHTML = current + quantity
         return
@@ -57,9 +61,9 @@ const log = (message, _color, from, to, json, fsmId, aggregate) => {
     const quantityDisplay = quantity > 1 ? 'inline' : 'none'
     const quantityWrapper = `<span class="quantity-section" style="display:${quantityDisplay}"><span> × </span><span class="quantity-wrapper">${quantity}</span></span>`
 
-    const header = isFlyingMessage ? `<div class='log-header'>` + fsmIdWrapper + minibox(fromId, from) + `<span> → </span>` + minibox(toId, to) + quantityWrapper + `</div>` : ''
+    const header = isFlyingMessage ? `<div class='log-header'>` + fsmIdWrapper + minibox(fromId, event.sourceId) + `<span> → </span>` + minibox(toId, event.targetId) + quantityWrapper + `</div>` : ''
 
-    const prettyJson = json ? '<pre>' + syntaxHighlight(json) + '</pre>' : '';
+    const prettyJson = event.json ? '<pre>' + syntaxHighlight(event.json) + '</pre>' : '';
 
     const element = document.createElement('span')
     element.id = 'log_' + guid()
@@ -213,7 +217,7 @@ const showNextUiEvent = () => {
 
     while (typeof event !== 'undefined' && event.eventType != 'message') {
         if (event.text) {
-            log(event.text, event.color, event.sourceId, event.targetId, event.json, event.fsmId)
+            log(event.text, event.color, event)
         }
         event = eventQueue.shift()
     }
@@ -229,12 +233,12 @@ const showNextUiEvent = () => {
         animateFromTo(
             _(`[id='component_${safeSourceId}']`),
             _(`[id='component_${safeTargetId}']`),
-            event.quantity ? event.quantity : 1,
+            event.count,
             event.fsmId
         )
     }
     if (event.text) {
-        log(event.text, event.color, event.sourceId, event.targetId, event.json, event.fsmId, event.aggregate)
+        log(event.text, event.color, event)
     }
 
     // Save enqueued animation into event log; keep it <= 100 events
@@ -283,9 +287,6 @@ const openWebSocket = () => {
 
 const processUiEvents = (events) => {
     for (event of events) {
-        if (!config.documentationMode) {
-            event.quantity = Array.isArray(event.json) ? event.json.length : 1
-        }
         eventQueue.push(event)
     }
 }

@@ -76,6 +76,11 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, eve
 				}
 			}
 
+			json := []map[string]interface{}{}
+			if !e.NoJSON {
+				json = []map[string]interface{}{m.Value}
+			}
+
 			if len(fsmId) == 0 && len(fsmIdAlias) > 0 {
 				*incompleteEvents = append(*incompleteEvents, event{
 					EventType:  string(bEventType),
@@ -83,7 +88,7 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, eve
 					SourceId:   string(bSourceId),
 					TargetId:   string(bTargetId),
 					Text:       string(bText),
-					JSON:       []map[string]interface{}{m.Value},
+					JSON:       json,
 					Aggregate:  e.Aggregate,
 				})
 				continue
@@ -99,7 +104,8 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, eve
 				SourceId:  string(bSourceId),
 				TargetId:  string(bTargetId),
 				Text:      string(bText),
-				JSON:      []map[string]interface{}{m.Value},
+				JSON:      json,
+				Count:     1,
 				Aggregate: e.Aggregate,
 			}
 
@@ -133,6 +139,7 @@ func aggregate(events []event, e event, aggregate bool, globalFSMId string) []ev
 
 	for i, ev := range events {
 		if ev.FSMId == e.FSMId && ev.SourceId == e.SourceId && ev.TargetId == e.TargetId {
+			events[i].Count++
 			events[i].JSON = append(events[i].JSON, e.JSON...)
 			return events
 		}
