@@ -34,7 +34,7 @@ const log = (message, _color, event) => {
         }
     }
 
-    const existingSelector = `.logline[data-from='${fromId}'][data-to='${toId}'][data-fsm-id='${fsmId}']`
+    const existingSelector = `.logline[data-from='${fromId}'][data-to='${toId}'][data-fsm-id='${event.fsmId}']`
     if (event.aggregate && isFlyingMessage && _(existingSelector)) {
         const current = parseInt(_(`${existingSelector} .quantity-wrapper`).innerHTML)
         _(`${existingSelector} .quantity-wrapper`).innerHTML = current + quantity
@@ -67,7 +67,7 @@ const log = (message, _color, event) => {
     element.className = 'logline'
     element.style.color = color
     element.innerHTML = header + `<div class='log-content'>` + (message ? message + '<br/>' : '') + prettyJson + '</div>'
-    element.dataset.fsmId = fsmId
+    element.dataset.fsmId = event.fsmId
     element.dataset.from = fromId
     element.dataset.to = toId
 
@@ -77,13 +77,13 @@ const log = (message, _color, event) => {
 
     _('#log').insertBefore(element, _('#log').firstChild)
 
-    if (isFlyingMessage && typeof fsmId !== 'undefined') {
-        addFilteringFSMId(fsmId, _('#' + element.id + ' .fsm-id-wrapper'), false)
+    if (isFlyingMessage && typeof event.fsmId !== 'undefined') {
+        addFilteringFSMId(event.fsmId, _('#' + element.id + ' .fsm-id-wrapper'), false)
     }
 
     // hide if being filtered out
     if (isFlyingMessage) {
-        if ((filterFSMId && filterFSMId != fsmId) || (filterIds.length && filterIds.indexOf(fromId) == -1 && filterIds.indexOf(toId) == -1)) {
+        if ((filterFSMId && filterFSMId != event.fsmId) || (filterIds.length && filterIds.indexOf(fromId) == -1 && filterIds.indexOf(toId) == -1)) {
             element.style.display = 'none'
         }
     }
