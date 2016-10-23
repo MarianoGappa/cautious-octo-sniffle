@@ -11,6 +11,7 @@ const init = (configFile) => {
         xhr.onreadystatechange = function(){
           if(xhr.status == 200 && xhr.readyState == 4){
             config = JSON.parse(xhr.responseText)
+            console.log(config)
           }
         }
         xhr.open("GET",`configs/${configFile}.js`,true)
