@@ -22,7 +22,7 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	port := mustResolvePort(41234)
+	port := 41234
 	listener := mustGetListener(port)
 	baseTemplate := mustParseBasePageTemplate()
 
