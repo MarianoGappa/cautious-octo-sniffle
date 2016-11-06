@@ -4,3 +4,4 @@ flowbro*
 !webroot/flowbro.js
 !webroot/util.js
 .vscode
+*.pprof
