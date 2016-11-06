@@ -6,7 +6,7 @@ import (
 	"text/template"
 )
 
-func processMessage(m message, rules []rule, fsmIdAliases map[string]string, events *[]event, incompleteEvents *[]event, globalFSMId string) error {
+   func processMessage(m message, rules []rule, fsmIdAliases map[string]string, events *[]event, incompleteEvents *[]event, globalFSMId string) error {
 	for _, r := range rules {
 		pass := true
 		for _, p := range r.Patterns {

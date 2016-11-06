@@ -3,23 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
-	"os"
-	"runtime/pprof"
+
+	"github.com/pkg/profile"
 )
 
-var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+var cpuprofile = flag.Bool("cpuprofile", false, "write cpu profile to file")
 
 func main() {
 	flag.Parse()
-	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
-		if err != nil {
-
-			log.Fatal(err)
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
+	if *cpuprofile {
+		defer profile.Start().Stop()
 	}
 
 	port := 41234
