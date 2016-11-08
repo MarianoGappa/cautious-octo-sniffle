@@ -5,6 +5,7 @@ import (
 
 	"io"
 
+	log "github.com/Sirupsen/logrus"
 	"golang.org/x/net/websocket"
 )
 
@@ -36,7 +37,8 @@ func readHeartbeats(wr wsRecv, out chan struct{}, uuid string) {
 			return
 		}
 		if err != nil {
-			continue
+			log.WithFields(log.Fields{"err": err}).Error("Error while reading heartbeat.")
+			return
 		}
 
 		if hb.UUID == uuid {
