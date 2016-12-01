@@ -7,11 +7,14 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Link struct {
-	URL   string
-	Title string
+	URL     string
+	Title   string
+	Tags    map[string]string
+	Elapsed string
 }
 
 func serveBaseHTML(template *template.Template, bookie bookie, w http.ResponseWriter, r *http.Request) error {
@@ -20,11 +23,9 @@ func serveBaseHTML(template *template.Template, bookie bookie, w http.ResponseWr
 		return err
 	}
 
-	ids := []string{}
-	if fsms, err := bookie.latestFSMs(10); err == nil {
-		for _, f := range fsms {
-			ids = append(ids, f.Id)
-		}
+	fsms := []fsm{}
+	if f, err := bookie.latestFSMs(10); err == nil {
+		fsms = f
 	}
 
 	links := []Link{}
@@ -36,10 +37,18 @@ func serveBaseHTML(template *template.Template, bookie bookie, w http.ResponseWr
 				URL:   "?config=" + config,
 				Title: title,
 			})
-			for _, d := range ids {
+			for _, fsm := range fsms {
+				elapsed := ""
+				_created, err := time.Parse("2006-01-02T15:04:05Z", fsm.Created)
+				if err == nil {
+					elapsed = time.Now().UTC().Sub(_created).String()
+				}
+
 				links = append(links, Link{
-					URL:   "?config=" + config + "&fsmId=" + d,
-					Title: title + " > " + d,
+					URL:     "?config=" + config + "&fsmId=" + fsm.Id,
+					Title:   title + " > " + fsm.Id,
+					Elapsed: elapsed + " ago",
+					Tags:    fsm.Tags,
 				})
 			}
 		}
@@ -71,7 +80,13 @@ func parseBasePageTemplate() (*template.Template, error) {
 			  <div class="row content">
 			      <ul>
 				{{range .}}<li>
-				    <a href="{{.URL}}">{{.Title}}</a>
+				    <a href="{{.URL}}">{{.Title}}</a><br/>
+				    <span class="created">(created {{.Elapsed}})</span>
+				    {{range $key, $value := .Tags}}
+							<br/>
+							<span class="tag_key">{{$key}}</span>
+							<span class="tag_value">{{$value}}</span>
+				    {{end}}
 				</li>{{end}}
 			      </ul>
 			  </div>
@@ -87,7 +102,7 @@ func parseBasePageTemplate() (*template.Template, error) {
 			          padding: 0;
 			          line-height: 1;
 			          font-family: 'Open Sans', 'Verdana', 'sans-serif';
-       			          color: white;
+                color: white;
 				  height: 100%;
 				}
 
@@ -137,6 +152,19 @@ func parseBasePageTemplate() (*template.Template, error) {
 
 				a:hover {
 				  color: rgb(50, 50, 200);
+				}
+
+				.created, .tag_key, .tag_value {
+					padding-top: 5px;
+					font-size: 12px;
+					color: #777;
+				}
+
+				.tag_key {
+					color: #222;
+				}
+
+				.tag_value {
 				}
 			</style>
 			</body>

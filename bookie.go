@@ -25,9 +25,10 @@ type topic struct {
 }
 
 type fsm struct {
-	Topics  map[string]topic `json:"topics"`
-	Created string           `json:"created"`
-	Id      string           `json:"id"`
+	Topics  map[string]topic  `json:"topics"`
+	Created string            `json:"created"`
+	Id      string            `json:"id"`
+	Tags    map[string]string `json:"tags"`
 }
 
 func (b bookie) fsm(fsmId string) (fsm, error) {
