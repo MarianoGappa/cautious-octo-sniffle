@@ -8,6 +8,7 @@ import (
 )
 
 var cpuprofile = flag.Bool("cpuprofile", false, "write cpu profile to file")
+var bookieUrl = flag.String("bookieUrl", "", "bookie url, including port (optional)")
 
 func main() {
 	flag.Parse()
