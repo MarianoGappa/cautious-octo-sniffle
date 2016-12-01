@@ -50,16 +50,7 @@ func process(ws *websocket.Conn, c chan *sarama.ConsumerMessage, sender iSender,
 			if m.Timestamp.UnixNano() <= 0 {
 				m.Timestamp = time.Now()
 			}
-			for i := range buffer {
-				target := len(buffer) - 1 - i
-				if m.Timestamp.UnixNano() >= buffer[target].Timestamp.UnixNano() {
-					buffer = sliceInsert(buffer, target+1, m)
-					break
-				}
-			}
-			if len(buffer) == 0 {
-				buffer = append(buffer, m)
-			}
+			buffer = append(buffer, m)
 		case <-ticker.C:
 			events := []event{}
 			incompleteEvents := []event{}
