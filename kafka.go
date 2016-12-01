@@ -142,31 +142,36 @@ func resolvePartitions(topic string, partition int, consumer sarama.Consumer) ([
 func resolveOffset(configOffset string, topic string, partition int32, client sarama.Client) (int64, error) {
 	if configOffset == "oldest" {
 		return sarama.OffsetOldest, nil
-	} else if configOffset == "newest" {
-		return sarama.OffsetNewest, nil
-	} else if numericOffset, err := strconv.ParseInt(configOffset, 10, 64); err == nil {
-		if numericOffset >= -2 {
-			return numericOffset, nil
-		}
-
-		oldest, err := client.GetOffset(topic, partition, sarama.OffsetOldest)
-		if err != nil {
-			return 0, err
-		}
-
-		newest, err := client.GetOffset(topic, partition, sarama.OffsetNewest)
-		if err != nil {
-			return 0, err
-		}
-
-		if newest+numericOffset < oldest {
-			return oldest, nil
-		}
-
-		return newest + numericOffset, nil
 	}
 
-	return 0, fmt.Errorf("Invalid value for consumer offset")
+	if configOffset == "newest" {
+		return sarama.OffsetNewest, nil
+	}
+
+	numericOffset, err := strconv.ParseInt(configOffset, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("Invalid value for consumer offset")
+	}
+
+	if numericOffset >= -2 {
+		return numericOffset, nil
+	}
+
+	oldest, err := client.GetOffset(topic, partition, sarama.OffsetOldest)
+	if err != nil {
+		return 0, err
+	}
+
+	newest, err := client.GetOffset(topic, partition, sarama.OffsetNewest)
+	if err != nil {
+		return 0, err
+	}
+
+	if newest+numericOffset < oldest {
+		return oldest, nil
+	}
+
+	return newest + numericOffset, nil
 }
 
 func joinMessages(pc []<-chan *sarama.ConsumerMessage) chan *sarama.ConsumerMessage {
