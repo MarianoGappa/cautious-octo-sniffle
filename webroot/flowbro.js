@@ -211,11 +211,11 @@ const showNextUiEvent = () => {
         if (event.text) {
             log(event.text, event.color, event)
         }
-        event = eventQueue.shift()
-    }
+        if (eventQueue.length == 0) {
+            return
+        }
 
-    if (eventQueue.length == 0) {
-        return
+        event = eventQueue.shift()
     }
 
     if (event.eventType == 'message') {
