@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"sync"
 
 	"github.com/Shopify/sarama"
+	log "github.com/Sirupsen/logrus"
 )
 
 type cluster struct {
@@ -62,7 +62,7 @@ func (c *cluster) close() {
 	log.Printf("Finished trying to close cluster with brokers %v", c.brokers)
 }
 
-func (c *cluster) addConsumer(conf consumerConfig) {
+func (c *cluster) addConsumer(conf consumerConfig, fsm fsm) {
 	topic, brokers, partition := conf.topic, conf.brokers, conf.partition
 	client, consumer := c.client, c.consumer
 
@@ -73,7 +73,7 @@ func (c *cluster) addConsumer(conf consumerConfig) {
 	}
 
 	for _, partition := range partitions {
-		offset, err := resolveOffset(conf.offset, topic, partition, client)
+		offset, err := resolveOffset(fsm, conf.offset, topic, partition, client)
 		if err != nil {
 			c.es.add(fmt.Sprintf("Could not resolve offset for %v, %v, %v. err=%v", brokers, topic, partition, err))
 			return
@@ -91,7 +91,12 @@ func (c *cluster) addConsumer(conf consumerConfig) {
 	}
 }
 
-func setupCluster(conf *config) cluster {
+func setupCluster(conf *config, bookie bookie) cluster {
+	f, err := bookie.fsm(conf.fsmId)
+	if err != nil {
+		log.WithFields(log.Fields{"err": err, "fsmId": conf.fsmId, "url": bookie.url}).Error("Failed to fetch FSMId from Bookie.")
+	}
+
 	c := cluster{brokers: conf.brokers}
 
 	saramaConfig := sarama.NewConfig()
@@ -114,10 +119,10 @@ func setupCluster(conf *config) cluster {
 	var wg sync.WaitGroup
 	for _, consumerConf := range conf.consumers {
 		wg.Add(1)
-		go func(consumerConf consumerConfig, c *cluster, wg *sync.WaitGroup) {
+		go func(consumerConf consumerConfig, f fsm, c *cluster, wg *sync.WaitGroup) {
 			defer wg.Done()
-			c.addConsumer(consumerConf)
-		}(consumerConf, &c, &wg)
+			c.addConsumer(consumerConf, f)
+		}(consumerConf, f, &c, &wg)
 	}
 	wg.Wait()
 
@@ -139,7 +144,22 @@ func resolvePartitions(topic string, partition int, consumer sarama.Consumer) ([
 	return partitions, nil
 }
 
-func resolveOffset(configOffset string, topic string, partition int32, client sarama.Client) (int64, error) {
+func resolveOffset(fsm fsm, configOffset string, topic string, partition int32, client sarama.Client) (int64, error) {
+	oldest, err := client.GetOffset(topic, partition, sarama.OffsetOldest)
+	if err != nil {
+		return 0, err
+	}
+
+	bookieOffset, ok := fsm.offset(topic, partition)
+	if ok {
+		if bookieOffset >= oldest {
+			return bookieOffset, nil
+		}
+
+		log.WithFields(log.Fields{"oldest": oldest, "bookieOffset": bookieOffset}).Error("Bookie's offset is older than Kafka's oldest.")
+		return oldest, nil
+	}
+
 	if configOffset == "oldest" {
 		return sarama.OffsetOldest, nil
 	}
@@ -155,11 +175,6 @@ func resolveOffset(configOffset string, topic string, partition int32, client sa
 
 	if numericOffset >= -2 {
 		return numericOffset, nil
-	}
-
-	oldest, err := client.GetOffset(topic, partition, sarama.OffsetOldest)
-	if err != nil {
-		return 0, err
 	}
 
 	newest, err := client.GetOffset(topic, partition, sarama.OffsetNewest)

@@ -60,10 +60,14 @@ type consumerConfig struct {
 type config struct {
 	consumers []consumerConfig
 	brokers   []string
+	fsmId     string
 }
 
 func processConfig(configJSON *configJSON) (*config, error) {
-	config := &config{brokers: strings.Split(configJSON.Kafka.Brokers, ",")}
+	config := &config{
+		brokers: strings.Split(configJSON.Kafka.Brokers, ","),
+		fsmId:   configJSON.FSMId,
+	}
 
 	globalOffset := configJSON.Kafka.Offset
 	for _, consumerJSON := range configJSON.Kafka.Consumers {

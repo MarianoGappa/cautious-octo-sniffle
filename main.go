@@ -19,7 +19,8 @@ func main() {
 	port := 41234
 	listener := mustGetListener(port)
 	baseTemplate := mustParseBasePageTemplate()
+	bookie := bookie{url: *bookieUrl}
 
 	fmt.Printf("Flowbro is your bro on localhost:%v!\n", port)
-	serve(&flowbro{}, baseTemplate, listener)
+	serve(&flowbro{}, baseTemplate, listener, bookie)
 }

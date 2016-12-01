@@ -14,10 +14,17 @@ type Link struct {
 	Title string
 }
 
-func serveBaseHTML(template *template.Template, w http.ResponseWriter, r *http.Request) error {
+func serveBaseHTML(template *template.Template, bookie bookie, w http.ResponseWriter, r *http.Request) error {
 	files, err := ioutil.ReadDir("webroot/configs")
 	if err != nil {
 		return err
+	}
+
+	ids := []string{}
+	if fsms, err := bookie.latestFSMs(10); err == nil {
+		for _, f := range fsms {
+			ids = append(ids, f.Id)
+		}
 	}
 
 	links := []Link{}
@@ -29,6 +36,12 @@ func serveBaseHTML(template *template.Template, w http.ResponseWriter, r *http.R
 				URL:   "?config=" + config,
 				Title: title,
 			})
+			for _, d := range ids {
+				links = append(links, Link{
+					URL:   "?config=" + config + "&fsmId=" + d,
+					Title: title + " > " + d,
+				})
+			}
 		}
 	}
 
