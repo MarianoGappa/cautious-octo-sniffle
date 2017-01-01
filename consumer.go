@@ -19,6 +19,7 @@ type message struct {
 	Offset    int64                  `json:"offset"`
 	Timestamp time.Time              `json:"timestamp"` // only set if kafka is version 0.10+
 	Count     int64                  // only for bookie counts
+	FSMId     string                 // only for bookie counts
 }
 
 type iSender interface {
@@ -36,7 +37,7 @@ func process(ws *websocket.Conn, c chan *sarama.ConsumerMessage, sender iSender,
 
 	buffer := []message{}
 	for t, c := range bookieCounts {
-		buffer = append(buffer, message{Count: c, Topic: t})
+		buffer = append(buffer, message{Count: c, Topic: t, FSMId: globalFSMId})
 	}
 
 	fsmIdAliases := map[string]string{}

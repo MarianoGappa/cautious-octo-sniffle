@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"regexp"
 	"text/template"
- )
+)
 
 func processMessage(m message, rules []rule, fsmIdAliases map[string]string, events *[]event, incompleteEvents *[]event, globalFSMId string) error {
 	for _, r := range rules {
@@ -55,6 +55,9 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, eve
 			}
 
 			fsmId := string(bFSMId)
+			if len(m.FSMId) > 0 {
+				fsmId = m.FSMId
+			}
 			fsmIdAlias := string(bFSMIdAlias)
 			if fa, ok := fsmIdAliases[fsmId]; len(fa) > 0 && ok {
 				fsmId = fa
@@ -98,6 +101,11 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, eve
 				continue
 			}
 
+			count := int64(1)
+			if m.Count > 0 {
+				count = m.Count
+			}
+
 			newE := event{
 				EventType: string(bEventType),
 				FSMId:     fsmId,
@@ -105,7 +113,7 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, eve
 				TargetId:  string(bTargetId),
 				Text:      string(bText),
 				JSON:      json,
-				Count:     1,
+				Count:     count,
 				Aggregate: e.Aggregate,
 			}
 
