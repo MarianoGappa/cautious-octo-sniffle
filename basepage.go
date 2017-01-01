@@ -15,6 +15,7 @@ type Link struct {
 	Title   string
 	Tags    map[string]string
 	Elapsed string
+	Generic bool
 }
 
 func serveBaseHTML(template *template.Template, bookie bookie, w http.ResponseWriter, r *http.Request) error {
@@ -34,14 +35,17 @@ func serveBaseHTML(template *template.Template, bookie bookie, w http.ResponseWr
 			config := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
 			title := strings.Title(strings.Replace(strings.Replace(config, "-", " ", -1), "_", " ", -1))
 			links = append(links, Link{
-				URL:   "?config=" + config,
-				Title: title,
+				URL:     "?config=" + config,
+				Title:   title,
+				Generic: true,
 			})
-			for _, fsm := range fsms {
+			l := len(fsms)
+			for i := range fsms {
+				fsm := fsms[l-i-1]
 				elapsed := ""
 				_created, err := time.Parse("2006-01-02T15:04:05Z", fsm.Created)
 				if err == nil {
-					elapsed = time.Now().UTC().Sub(_created).String()
+					elapsed = durationRound(time.Now().UTC().Sub(_created), time.Second).String()
 				}
 
 				links = append(links, Link{
@@ -81,12 +85,12 @@ func parseBasePageTemplate() (*template.Template, error) {
 			      <ul>
 				{{range .}}<li>
 				    <a href="{{.URL}}">{{.Title}}</a><br/>
-				    <span class="created">(created {{.Elapsed}})</span>
-				    {{range $key, $value := .Tags}}
+				    {{if not .Generic }}<span class="created">(created {{.Elapsed}})</span>
+				    {{range $key, $value := .Tags}}{{if ne $key "created"}}
 							<br/>
 							<span class="tag_key">{{$key}}</span>
 							<span class="tag_value">{{$value}}</span>
-				    {{end}}
+				    {{end}}{{end}}{{end}}
 				</li>{{end}}
 			      </ul>
 			  </div>
@@ -172,4 +176,24 @@ func parseBasePageTemplate() (*template.Template, error) {
 	`
 
 	return template.New("base").Parse(baseHTML)
+}
+
+// https://play.golang.org/p/QHocTHl8iR
+func durationRound(d, r time.Duration) time.Duration {
+	if r <= 0 {
+		return d
+	}
+	neg := d < 0
+	if neg {
+		d = -d
+	}
+	if m := d % r; m+m < r {
+		d = d - m
+	} else {
+		d = d + r - m
+	}
+	if neg {
+		return -d
+	}
+	return d
 }
