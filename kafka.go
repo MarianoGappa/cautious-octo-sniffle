@@ -91,12 +91,7 @@ func (c *cluster) addConsumer(conf consumerConfig, fsm fsm) {
 	}
 }
 
-func setupCluster(conf *config, bookie bookie) cluster {
-	f, err := bookie.fsm(conf.fsmId)
-	if err != nil {
-		log.WithFields(log.Fields{"err": err, "fsmId": conf.fsmId, "url": bookie.url}).Error("Failed to fetch FSMId from Bookie.")
-	}
-
+func setupCluster(conf *config, f fsm) cluster {
 	c := cluster{brokers: conf.brokers}
 
 	saramaConfig := sarama.NewConfig()

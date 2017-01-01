@@ -6,10 +6,11 @@ import (
 )
 
 type consumerConfigJson struct {
-	Brokers   string `json:"brokers,omitempty"`
-	Partition *int   `json:"partition,omitempty"`
-	Topic     string `json:"topic"`
-	Offset    string `json:"offset,omitempty"`
+	Brokers         string `json:"brokers,omitempty"`
+	Partition       *int   `json:"partition,omitempty"`
+	Topic           string `json:"topic"`
+	Offset          string `json:"offset,omitempty"`
+	BookieCountOnly bool   `json:"bookieCountOnly,omitempty"`
 }
 
 type kafka struct {
@@ -58,19 +59,26 @@ type consumerConfig struct {
 }
 
 type config struct {
-	consumers []consumerConfig
-	brokers   []string
-	fsmId     string
+	consumers       []consumerConfig
+	brokers         []string
+	fsmId           string
+	bookieCountOnly []string
 }
 
 func processConfig(configJSON *configJSON) (*config, error) {
 	config := &config{
-		brokers: strings.Split(configJSON.Kafka.Brokers, ","),
-		fsmId:   configJSON.FSMId,
+		brokers:         strings.Split(configJSON.Kafka.Brokers, ","),
+		fsmId:           configJSON.FSMId,
+		bookieCountOnly: []string{},
 	}
 
 	globalOffset := configJSON.Kafka.Offset
 	for _, consumerJSON := range configJSON.Kafka.Consumers {
+		if consumerJSON.BookieCountOnly {
+			config.bookieCountOnly = append(config.bookieCountOnly, consumerJSON.Topic)
+			continue
+		}
+
 		consumer := consumerConfig{}
 
 		if len(consumerJSON.Topic) == 0 {

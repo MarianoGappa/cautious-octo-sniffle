@@ -18,6 +18,7 @@ type message struct {
 	Partition int32                  `json:"partition"`
 	Offset    int64                  `json:"offset"`
 	Timestamp time.Time              `json:"timestamp"` // only set if kafka is version 0.10+
+	Count     int64                  // only for bookie counts
 }
 
 type iSender interface {
@@ -30,10 +31,14 @@ func (s sender) Send(ws *websocket.Conn, msg string) error {
 	return websocket.Message.Send(ws, msg)
 }
 
-func process(ws *websocket.Conn, c chan *sarama.ConsumerMessage, sender iSender, rules []rule, globalFSMId string, uuid string) {
+func process(ws *websocket.Conn, c chan *sarama.ConsumerMessage, sender iSender, rules []rule, globalFSMId string, uuid string, bookieCounts map[string]int64) {
 	ticker := time.NewTicker(time.Millisecond * 100)
 
 	buffer := []message{}
+	for t, c := range bookieCounts {
+		buffer = append(buffer, message{Count: c, Topic: t})
+	}
+
 	fsmIdAliases := map[string]string{}
 	sendSuccess("Starting to send messages!", ws)
 
