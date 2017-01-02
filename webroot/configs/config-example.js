@@ -1,34 +1,5 @@
-var config = {
-    /*
-        Will be displayed in the header of the page
-    */
+{
     "title": "FlowBro Example",
-
-    /*
-        Components are the guys that appear on the UI and exchange
-        messages between each other.
-
-        Components can appear in the UI as either images or flowchart
-        rectangles with round corners; the rectangles will be used
-        by default if you don't specify an 'img' property.
-
-        The ids are mainly gonna be used in the "logic" section, where
-        the interactions are defined, but also as the text inside the
-        UI rectangles if you don't specify an image, so feel free to
-        capitalise and use spaces.
-
-        The img property is a reference to the "images" section below.
-
-        Every property is optional except for the id, even top & left.
-        If you don't specify top & left, flowbro will choose them for
-        up to 5 components, but don't specify it for some but not all,
-        as flowbro won't be smart in that case.
-
-        You don't need to set backgroundColor, but it's useful to
-        check if you set the height/width properly for an image. The
-        downside to larger-than-needed dimensions is that the flying messages
-        don't center properly on components.
-    */
     "components": [
         {
             "id": "Person",
@@ -56,134 +27,42 @@ var config = {
             "backgroundColor": "rgb(150, 150, 200)"
         }
     ],
-
-    /*
-        This is where you define the mapping between consumed messages and
-        ui interactions between components. Note that it's a 1 to n mapping:
-        one event (i.e. one consumed message) can trigger multiple ui
-        interactions.
-
-        An "event" is a Kafka Message received on a queue by the server. It
-        looks like this:
-        (Use your cleverness to infer what each element means in Kafka lingo)
-
-        {"topic": "test", "partition": "0", "offset": "6", "key": "",
-        "value": "tablet", "consumedUnixTimestamp": "1460189668"}
-
-        You can use whichever Javascript magic you choose on this function, provided
-        that you return an array of ui events as a result (empty array as a default case).
-
-        For now, there are two types of UI interations: 'message' and 'log'.
-        'message' is a message flowing from 'sourceId' to 'targetId', and 'log'
-        is an entry on the right panel of the UI.
-
-        'sourceId' and 'targetId' are the ids defined in the "components" section
-    */
-    "logic": function(event) {
-        if (event.topic == "test" && event.value.match(/broadcast/i)) {
-            return [
-                    {
-                        'eventType': 'message',
-                        'sourceId': 'Person',
-                        'targetId': 'Server',
-                        'text': 'Person initiates a request to submit content to all devices'
-                    }
+     "rules": [
+        {
+            "patterns": [
+                {"field": "{{ .Topic }}", "pattern": "one"}
+            ],
+            "events": [
+                {
+                    "eventType": "message",
+                    "sourceId": "Server",
+                    "targetId": "Phone",
+                    "text": "Send SMS"
+                }
             ]
-        } else if (event.topic == "test" && event.value.match(/tablet/i)) {
-            return [
-                    {
-                        'eventType': 'message',
-                        'sourceId': 'Server',
-                        'targetId': 'Phone',
-                        'text': 'Server produces content to cellphone',
-                        'color': 'happy'
-                    }
-            ]
-        } else if (event.topic == "test" && event.value.match(/cellphone/i)) {
-            return [
-                    {
-                        'eventType': 'message',
-                        'sourceId': 'Server',
-                        'targetId': 'Tablet',
-                        'text': 'Server produces content to tablet',
-                        'color': 'happy'
-                    }
-            ]
-        } else
-            return []
+        }
+    ],
+    "defaultMessage": {
+        "img": "message",
+        "height": "38px",
+        "backgroundColor": "transparent"
     },
-
-    /*
-        Images used throughout Flowbro. Use these references on components and
-        defaultMessage. Will be used in the src attribute of img tags.
-    */
     "images" : {
+        "message": "images/message.gif",
         "person": "images/person.png"
     },
-
-    /*
-        These colours will be used for components with no image specified.
-        An algorithm will cycle through these colours for each component.
-    */
-    "colourPalette" : ["#4DD0E1","#AED581","#FFD54F","#DCE775","#FFB74D","#81C784","#FFF176","#4DB6AC","#FF8A65"],
-
-    /*
-        Incoming events (i.e. kafka messages coming from the websocket)
-        are buffered such that if 10 events come in a quick burst, you
-        can still see the order in which they came. This is useful to
-        understand the flow of the event pipeline, but could be
-        misleading if there is a lot of traffic on the queues.
-    */
+    "colourPalette" : ["#f44336", "#e91e63", "#9c27b0", "#673ab7", "#3f51b5", "#2196f3", "#03a9f4", "#00bcd4", "#009688", "#4caf50", "#8bc34a", "#cddc39", "#ffeb3b", "#ffc107", "#ff9800", "#ff5722","#795548", "#9e9e9e", "#607d8b"],
     "eventSeparationIntervalMilliseconds": 500,
-
-    /*
-        How long does it take for one message to go from component A to
-        component B. CSS transition property value.
-    */
     "animationLengthMilliseconds": 1000,
-
-    /*
-        When an incoming message goes through the logic function and doesn't
-        produce any events, a log will be issued unless this setting is set
-        to true.
-    */
     "hideIgnoredMessages": false,
-
-    /*
-        Where is the server listening at? ws://[this_is_the_address]/ws
-        e.g. localhost:41234
-        Flowbro starts on port 41234 by default.
-    */
     "webSocketAddress": "localhost:41234",
-
-    /*
-        When true, the flying messages will be color-coded based on a hash
-        of the Kafka message's key. Same key => same color.
-    */
-    "colorBasedOnKey": true,
-
-    /*
-        Please include all Kafka topic/partition pairs that you need to
-        listen to.
-        Note that there is an "offset" setting. It should always be set
-        to "newest" (i.e. read new messages from now on on the queue), but
-        you can set it to "oldest" (i.e. read from beginning) for test
-        purposes. This can be a very bad idea!
-
-        This configuration will be sent to the server, so please don't add
-        extra fields or you will likely break the server!
-
-        Use -1 on the partition property to listen to all partitions in the
-        topic. Otherwise, specify the partition number.
-    */
-    "serverConfig": {
+    "kafka": {
+        "brokers" : "kafka1.company.com:9092,kafka2.company.com:9092,kafka3.company.com:9092",
         "consumers" : [
             {
-                "broker" : "localhost:9092",
-                "partition" : -1,
-                "topic": "test",
-                "offset": "newest"
+                "topic": "one"
             }
         ]
-    }
+    },
+    "tutorial": true
 }

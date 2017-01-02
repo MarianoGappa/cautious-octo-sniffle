@@ -49,6 +49,7 @@ type configJSON struct {
 	Kafka         kafka  `json:"kafka"`
 	FSMId         string `json:"fsmId"`
 	HeartbeatUUID string `json:"heartbeatUUID"`
+	Tutorial      bool   `json:"tutorial"`
 }
 
 type consumerConfig struct {
@@ -63,6 +64,7 @@ type config struct {
 	brokers         []string
 	fsmId           string
 	bookieCountOnly []string
+	tutorial        bool
 }
 
 func processConfig(configJSON *configJSON) (*config, error) {
@@ -70,6 +72,7 @@ func processConfig(configJSON *configJSON) (*config, error) {
 		brokers:         strings.Split(configJSON.Kafka.Brokers, ","),
 		fsmId:           configJSON.FSMId,
 		bookieCountOnly: []string{},
+		tutorial:        configJSON.Tutorial,
 	}
 
 	globalOffset := configJSON.Kafka.Offset
