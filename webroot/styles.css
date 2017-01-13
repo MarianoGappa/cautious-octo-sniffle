@@ -127,7 +127,7 @@ b {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 15px;
+    padding: 5px 15px 5px 15px;
     background-color: #CCC;
 }
 .log-header span, #filter-content span {
