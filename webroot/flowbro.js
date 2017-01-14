@@ -62,7 +62,7 @@ const log = (message, _color, event) => {
 
     const prettyJson = event.json ? '<pre>' + syntaxHighlight(event.json) + '</pre>' : '';
 
-    const element = document.createElement('span')
+    const element = document.createElement('div')
     element.id = 'log_' + guid()
     element.className = 'logline'
     element.style.color = color
@@ -76,6 +76,9 @@ const log = (message, _color, event) => {
     }
 
     _('#log').insertBefore(element, _('#log').firstChild)
+    if (event.highlight) {
+        highlightElement(element)
+    }
 
     if (isFlyingMessage && typeof event.fsmId !== 'undefined') {
         addFilteringFSMId(event.fsmId, _('#' + element.id + ' .fsm-id-wrapper'), false)

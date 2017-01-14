@@ -93,6 +93,7 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, eve
 					Text:       string(bText),
 					JSON:       json,
 					Aggregate:  e.Aggregate,
+					Highlight:  e.Highlight,
 				})
 				continue
 			}
@@ -115,6 +116,7 @@ func processMessage(m message, rules []rule, fsmIdAliases map[string]string, eve
 				JSON:      json,
 				Count:     count,
 				Aggregate: e.Aggregate,
+				Highlight: e.Highlight,
 			}
 
 			*events = aggregate(*events, newE, e.Aggregate, globalFSMId)
@@ -147,6 +149,7 @@ func aggregate(events []event, e event, aggregate bool, globalFSMId string) []ev
 
 	for i, ev := range events {
 		if ev.FSMId == e.FSMId && ev.SourceId == e.SourceId && ev.TargetId == e.TargetId {
+			events[i].Highlight = events[i].Highlight || e.Highlight
 			events[i].Count++
 			events[i].JSON = append(events[i].JSON, e.JSON...)
 			return events

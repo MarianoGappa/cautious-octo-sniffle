@@ -116,6 +116,7 @@ b {
     top:50%;
 }
 .logline, #filter-content {
+    position: relative;
     margin: 10px;
     margin-bottom: 0px;
     display: block;
@@ -239,6 +240,25 @@ h2 {
     color: white;
     font-weight: bolder;
 }
+
+.overlay-appear {
+    height: 100%;
+    width: 100%;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    background-color: rgba(0,0,0,0.3);
+    overflow-x: hidden;
+    transition: 0.6s;
+}
+
+.overlay-disappear {
+    background-color: rgba(0,0,0,0);
+    transition: 0.6s;
+}
+
+.on-top { z-index: 2 }
 
 /* http://stackoverflow.com/questions/4810841/how-can-i-pretty-print-json-using-javascript */
 pre {padding: 5px; margin: 5px; font-size: 10px;}

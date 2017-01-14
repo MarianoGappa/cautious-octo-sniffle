@@ -32,6 +32,7 @@ type event struct {
 	Color      string                   `json:"color"`
 	Count      int64                    `json:"count"`
 	NoJSON     bool                     `json:"noJSON,omitempty"`
+	Highlight  bool                     `json:"highlight,omitempty"`
 }
 
 type pattern struct {

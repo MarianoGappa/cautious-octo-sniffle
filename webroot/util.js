@@ -81,7 +81,6 @@ const getParameterByName = (name, noLowercase) => {
     return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
 
-
 function* colorGenerator(colors) {
     let i = 0
     while(true) {
@@ -94,3 +93,34 @@ const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substrin
 const guid = () => s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4()
 const cleanArray = (actual) => actual.filter((elem) => Boolean(elem))
 const textLimit = (s, l) => (l < 3 || s.length <= l) ? s : s.substring(0,l-3) + "..."
+
+const highlightElement = (e) => {
+    addClass(e, "on-top")
+    const element = document.createElement('div')
+    document.body.appendChild(element)
+    addClass(element, 'overlay-appear')
+    setTimeout(() => addClass(element, 'overlay-disappear'), 600)
+    setTimeout(() => {
+        document.body.removeChild(element)
+        removeClass(e, "on-top")
+    }, 600)
+}
+
+// http://stackoverflow.com/questions/6787383/how-to-add-remove-a-class-in-javascript
+function hasClass(ele,cls) {
+  return !!ele.className.match(new RegExp('(\\s|^)'+cls+'(\\s|$)'));
+}
+
+// http://stackoverflow.com/questions/6787383/how-to-add-remove-a-class-in-javascript
+function addClass(ele,cls) {
+  if (!hasClass(ele,cls)) ele.className = ele.className.trim() + " " + cls;
+}
+
+// http://stackoverflow.com/questions/6787383/how-to-add-remove-a-class-in-javascript
+function removeClass(ele,cls) {
+  if (hasClass(ele,cls)) {
+    var reg = new RegExp('(\\s|^)'+cls+'(\\s|$)');
+    ele.className = ele.className.replace(reg,' ');
+    ele.className = ele.className.trim();
+  }
+}

@@ -72,6 +72,7 @@
           "sourceId": "Server",
           "targetId": "Desktop",
           "text": "{{.Value.message}}",
+          "noJSON": true,
           "aggregate": true
         }
       ]
@@ -93,6 +94,7 @@
           "sourceId": "Server",
           "targetId": "Phone",
           "text": "{{.Value.message}}",
+          "noJSON": true,
           "aggregate": true
         }
       ]
@@ -114,6 +116,7 @@
           "sourceId": "Server",
           "targetId": "Tablet",
           "text": "{{.Value.message}}",
+          "noJSON": true,
           "aggregate": true
         }
       ]
@@ -131,7 +134,8 @@
           "sourceId": "Tutorial",
           "targetId": "You",
           "text": "{{.Value.log}}",
-          "noJSON": true
+          "noJSON": true,
+          "highlight": true
         }
       ]
     }
