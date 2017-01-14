@@ -297,19 +297,13 @@ const loadComponents = (config) => {
         element.style.left = position.left
         element.style.top = position.top
 
-        if (component.img) {
-            const img = document.createElement('img')
-            img.src = config.images[component.img]
-            element.appendChild(img)
-        } else {
-            const title = document.createElement('span')
-            title.className = 'component_title'
-            title.innerHTML = component.id
-            element.appendChild(title)
-            element.style.backgroundColor = component.backgroundColor ? component.backgroundColor : colorRing.next().value
-            title.style.marginTop = "-" + (parseInt(title.offsetHeight) / 2) + "px"
-            title.style.width = parseInt(element.style.width) - 20 - 2 // 20 = padding
-        }
+        const title = document.createElement('span')
+        title.className = 'component_title'
+        title.innerHTML = component.id
+        element.appendChild(title)
+        element.style.backgroundColor = component.backgroundColor ? component.backgroundColor : colorRing.next().value
+        title.style.marginTop = "-" + (parseInt(title.offsetHeight) / 2) + "px"
+        title.style.width = parseInt(element.style.width) - 20 - 2 // 20 = padding
 
         // filtering handler
         element.onclick = function () {

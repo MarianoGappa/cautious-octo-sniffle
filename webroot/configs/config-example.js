@@ -144,15 +144,6 @@
       ]
     }
   ],
-  "defaultMessage": {
-    "img": "message",
-    "height": "38px",
-    "backgroundColor": "transparent"
-  },
-  "images": {
-    "message": "images/message.gif",
-    "person": "images/person.png"
-  },
   "colourPalette": [
     "#f44336",
     "#9c27b0",
