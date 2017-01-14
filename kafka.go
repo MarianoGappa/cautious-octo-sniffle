@@ -39,26 +39,28 @@ func (c *cluster) close() {
 	log.Printf("Trying to close cluster with brokers %v", c.brokers)
 
 	log.Printf("Trying to close %v partition consumers for cluster with brokers %v", len(c.partitionConsumers), c.brokers)
+	cc := 0
 	for _, pc := range c.partitionConsumers {
 		if err := pc.Close(); err != nil {
 			log.Printf("Error while trying to close partition consumer for cluster with brokers %v. err=%v", c.brokers, err)
 		}
+		cc++
 	}
 
-	log.Printf("Trying to close consumer for cluster with brokers %v", c.brokers)
-	if err := c.consumer.Close(); err != nil {
-		log.Printf("Error while trying to close consumer for cluster with brokers %v. err=%v", c.brokers, err)
-	} else {
-		log.Printf("Successfully closed consumer for cluster with brokers %v", c.brokers)
+	if cc > 0 {
+		log.Printf("Trying to close consumer for cluster with brokers %v", c.brokers)
+		if err := c.consumer.Close(); err != nil {
+			log.Printf("Error while trying to close consumer for cluster with brokers %v. err=%v", c.brokers, err)
+		} else {
+			log.Printf("Successfully closed consumer for cluster with brokers %v", c.brokers)
+		}
+		log.Printf("Trying to close client for cluster with brokers %v", c.brokers)
+		if err := c.client.Close(); err != nil {
+			log.Printf("Error while trying to close client for cluster with brokers %v. err=%v", c.brokers, err)
+		} else {
+			log.Printf("Successfully closed client for cluster with brokers %v", c.brokers)
+		}
 	}
-
-	log.Printf("Trying to close client for cluster with brokers %v", c.brokers)
-	if err := c.client.Close(); err != nil {
-		log.Printf("Error while trying to close client for cluster with brokers %v. err=%v", c.brokers, err)
-	} else {
-		log.Printf("Successfully closed client for cluster with brokers %v", c.brokers)
-	}
-
 	log.Printf("Finished trying to close cluster with brokers %v", c.brokers)
 }
 
