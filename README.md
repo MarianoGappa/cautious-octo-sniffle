@@ -1,6 +1,8 @@
 # flowbro
 Real-time flowchart visualisation for Kafka-based distributed systems.
 
+![Flowbro](flowbro.gif)
+
 ## Installation
 
 ```
