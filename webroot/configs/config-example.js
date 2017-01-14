@@ -29,12 +29,16 @@
     {
       "id": "Tutorial",
       "top": 650,
-      "left": 170
+      "left": 70,
+      "height": "50px",
+      "width": "100px"
     },
     {
       "id": "You",
       "top": 650,
-      "left": 425
+      "left": 425,
+      "height": "50px",
+      "width": "100px"
     }
   ],
   "rules": [
