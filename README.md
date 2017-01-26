@@ -6,15 +6,16 @@ Real-time flowchart visualisation for Kafka-based distributed systems.
 ## Installation
 
 ```
-go get github.com/MarianoGappa/flowbro
+go get github.com/marianogappa/flowbro
 ```
 
-or get the latest binary for your OS: https://github.com/MarianoGappa/flowbro/releases
+or get the latest binary for your OS: https://github.com/marianogappa/flowbro/releases
 
 ## Getting started
 
 - Start flowbro:
 ```
+$ cd $GOPATH/src/github.com/marianogappa/flowbro
 $ flowbro
 Flowbro is your bro on localhost:41234!
 ```
