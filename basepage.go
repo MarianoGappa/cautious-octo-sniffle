@@ -18,20 +18,17 @@ type Link struct {
 	Generic bool
 }
 
-func serveBaseHTML(template *template.Template, bookie bookie, w http.ResponseWriter, r *http.Request) error {
-	files, err := ioutil.ReadDir("webroot/configs")
+const mainPath = "webroot/configs"
+
+func serveBaseHTML(template *template.Template, w http.ResponseWriter, r *http.Request) error {
+	files, err := ioutil.ReadDir(mainPath)
 	if err != nil {
 		return err
 	}
 
-	fsms := []fsm{}
-	if f, err := bookie.latestFSMs(10); err == nil {
-		fsms = f
-	}
-
 	links := []Link{}
 	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".js" {
+		if filepath.Ext(file.Name()) == ".json" {
 			config := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
 			title := strings.Title(strings.Replace(strings.Replace(config, "-", " ", -1), "_", " ", -1))
 			links = append(links, Link{
@@ -39,21 +36,29 @@ func serveBaseHTML(template *template.Template, bookie bookie, w http.ResponseWr
 				Title:   title,
 				Generic: true,
 			})
-			l := len(fsms)
-			for i := range fsms {
-				fsm := fsms[l-i-1]
-				elapsed := ""
-				_created, err := time.Parse("2006-01-02T15:04:05Z", fsm.Created)
-				if err == nil {
-					elapsed = durationRound(time.Now().UTC().Sub(_created), time.Second).String()
+
+			if bookie, ok := newBookieFromConfigFilePath(mainPath + "/" + file.Name()); ok {
+				fsms := []fsm{}
+				if f, err := bookie.latestFSMs(10); err == nil {
+					fsms = f
 				}
 
-				links = append(links, Link{
-					URL:     "?config=" + config + "&fsmId=" + fsm.Id,
-					Title:   title + " > " + fsm.Id,
-					Elapsed: elapsed + " ago",
-					Tags:    fsm.Tags,
-				})
+				l := len(fsms)
+				for i := range fsms {
+					fsm := fsms[l-i-1]
+					elapsed := ""
+					_created, err := time.Parse("2006-01-02T15:04:05Z", fsm.Created)
+					if err == nil {
+						elapsed = durationRound(time.Now().UTC().Sub(_created), time.Second).String()
+					}
+
+					links = append(links, Link{
+						URL:     "?config=" + config + "&fsmId=" + fsm.Id,
+						Title:   title + " > " + fsm.Id,
+						Elapsed: elapsed + " ago",
+						Tags:    fsm.Tags,
+					})
+				}
 			}
 		}
 	}

@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -48,6 +51,32 @@ func (b bookie) fsm(fsmId string) (fsm, error) {
 	return f, err
 }
 
+func newBookie(url string) bookie {
+	if !strings.HasPrefix(url, "http") {
+		url = "http://" + url
+	}
+	return bookie{url: url}
+}
+
+func newBookieFromConfigFilePath(path string) (bookie, bool) {
+	raw, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Println(err)
+		return bookie{}, false
+	}
+
+	var c configJSON
+	if err := json.Unmarshal(raw, &c); err != nil {
+		return bookie{}, false
+	}
+
+	if c.BookieURL == "" {
+		return bookie{}, false
+	}
+
+	return newBookie(c.BookieURL), true
+}
+
 func (b bookie) latestFSMs(n int) ([]fsm, error) {
 	if len(b.url) == 0 {
 		return []fsm{}, fmt.Errorf("bookie is not enabled")
@@ -62,7 +91,6 @@ func (b bookie) latestFSMs(n int) ([]fsm, error) {
 
 	d := json.NewDecoder(r.Body)
 	if err := d.Decode(&fsms); err != nil {
-		fmt.Println(err)
 		return fsms, err
 	}
 

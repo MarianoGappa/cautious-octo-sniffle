@@ -51,6 +51,7 @@ type configJSON struct {
 	FSMId         string `json:"fsmId"`
 	HeartbeatUUID string `json:"heartbeatUUID"`
 	Tutorial      bool   `json:"tutorial"`
+	BookieURL     string `json:"bookieURL"`
 }
 
 type consumerConfig struct {
@@ -65,6 +66,7 @@ type config struct {
 	brokers         []string
 	fsmId           string
 	bookieCountOnly []string
+	bookieUrl       string
 	tutorial        bool
 }
 
@@ -73,6 +75,7 @@ func processConfig(configJSON *configJSON) (*config, error) {
 		brokers:         strings.Split(configJSON.Kafka.Brokers, ","),
 		fsmId:           configJSON.FSMId,
 		bookieCountOnly: []string{},
+		bookieUrl:       configJSON.BookieURL,
 		tutorial:        configJSON.Tutorial,
 	}
 

@@ -1,8 +1,5 @@
-*.js
-!webroot/configs/config-example.js
+*.json
+!webroot/configs/config-example.json
 flowbro
 flowbro-*
-!webroot/flowbro.js
-!webroot/util.js
-.vscode
 *.pprof

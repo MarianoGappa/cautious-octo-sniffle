@@ -14,7 +14,7 @@ import (
 
 type flowbro struct{}
 
-func (f *flowbro) onConnected(bookie bookie) func(ws *websocket.Conn) {
+func (f *flowbro) onConnected() func(ws *websocket.Conn) {
 	return func(ws *websocket.Conn) {
 		log.Println("Opened WebSocket connection!")
 
@@ -33,7 +33,7 @@ func (f *flowbro) onConnected(bookie bookie) func(ws *websocket.Conn) {
 			return
 		}
 
-		c, bookieCounts, cluster, ok := setupKafka(ws, config, bookie)
+		c, bookieCounts, cluster, ok := setupKafka(ws, config)
 		if !ok {
 			return
 		}
@@ -47,17 +47,21 @@ func (f *flowbro) onConnected(bookie bookie) func(ws *websocket.Conn) {
 	}
 }
 
-func setupKafka(ws *websocket.Conn, config *config, bookie bookie) (chan *sarama.ConsumerMessage, map[string]int64, *cluster, bool) {
+func setupKafka(ws *websocket.Conn, config *config) (chan *sarama.ConsumerMessage, map[string]int64, *cluster, bool) {
 	bookieCounts := map[string]int64{}
+	bookie, f := bookie{}, fsm{}
+	var err error
+	if config.bookieUrl != "" {
+		bookie = newBookie(config.bookieUrl)
+		f, err = bookie.fsm(config.fsmId)
+		if len(config.fsmId) > 0 && err != nil {
+			log.WithFields(log.Fields{"err": err, "fsmId": config.fsmId, "url": bookie.url}).Warn("Failed to fetch FSMId from Bookie.")
+		}
+	}
 
 	if config.tutorial {
 		sendSuccess("Starting tutorial. Flowbro is not really connected to a Kafka broker; messages are being mocked.", ws)
-		return tutorial(), map[string]int64{}, &cluster{}, true
-	}
-
-	f, err := bookie.fsm(config.fsmId)
-	if len(config.fsmId) > 0 && err != nil {
-		log.WithFields(log.Fields{"err": err, "fsmId": config.fsmId, "url": bookie.url}).Warn("Failed to fetch FSMId from Bookie.")
+		return tutorial(), bookieCounts, &cluster{}, true
 	}
 
 	cluster := setupCluster(config, f)
@@ -110,10 +114,10 @@ func sendSuccess(text string, ws *websocket.Conn) {
 	websocket.Message.Send(ws, string(byt))
 }
 
-func (f *flowbro) baseHandler(template *template.Template, bookie bookie) func(http.ResponseWriter, *http.Request) {
+func (f *flowbro) baseHandler(template *template.Template) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" && r.URL.RawQuery == "" {
-			if err := serveBaseHTML(template, bookie, w, r); err != nil {
+			if err := serveBaseHTML(template, w, r); err != nil {
 				log.Printf("Loading base page failed; ignoring. err=%v\n", err)
 			}
 		} else {
@@ -122,10 +126,10 @@ func (f *flowbro) baseHandler(template *template.Template, bookie bookie) func(h
 	}
 }
 
-func serve(f *flowbro, baseTemplate *template.Template, listener *net.TCPListener, bookie bookie) {
+func serve(f *flowbro, baseTemplate *template.Template, listener *net.TCPListener) {
 	mux := http.NewServeMux()
-	mux.Handle("/ws", websocket.Handler(f.onConnected(bookie)))
-	mux.HandleFunc("/", f.baseHandler(baseTemplate, bookie))
+	mux.Handle("/ws", websocket.Handler(f.onConnected()))
+	mux.HandleFunc("/", f.baseHandler(baseTemplate))
 
 	err := http.Serve(listener, mux)
 	if err != nil {
